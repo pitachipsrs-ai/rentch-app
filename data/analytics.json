@@ -1,0 +1,129 @@
+{
+  "2026-09-27": {
+    "date": "2026-09-27",
+    "pageViews": 18,
+    "landingViews": 4,
+    "catalogViews": 14,
+    "uniqueVisitorIds": [
+      "v_5mmj22cda_mujyzmat",
+      "v_siie9rxru_mujyula7"
+    ],
+    "apartmentViews": 7,
+    "swipesRight": 1,
+    "swipesLeft": 6,
+    "telegramClicks": 0,
+    "apartmentBreakdown": {
+      "myhome-26142775": {
+        "title": "Сдается 4-комнатная квартира в Ваке",
+        "views": 1,
+        "likes": 1,
+        "passes": 0
+      },
+      "myhome-26172638": {
+        "title": "Сдается 3-комнатная квартира в Сабуртало",
+        "views": 1,
+        "likes": 0,
+        "passes": 1
+      },
+      "myhome-26172411": {
+        "title": "Сдается 2-комнатная квартира в Багеби",
+        "views": 1,
+        "likes": 0,
+        "passes": 1
+      },
+      "myhome-26172462": {
+        "title": "Сдается 3-комнатная квартира в Сабуртало",
+        "views": 1,
+        "likes": 0,
+        "passes": 1
+      },
+      "myhome-26026943": {
+        "title": "Сдается 2-комнатная квартира в Сабуртало",
+        "views": 1,
+        "likes": 0,
+        "passes": 1
+      },
+      "myhome-26167330": {
+        "title": "Сдается 2-комнатная квартира на плато Нуцубидзе",
+        "views": 1,
+        "likes": 0,
+        "passes": 1
+      },
+      "halo-5425645013833": {
+        "title": "2-комн. квартира (60 м²) — Борча",
+        "views": 1,
+        "likes": 0,
+        "passes": 1
+      }
+    }
+  },
+  "2026-09-28": {
+    "date": "2026-09-28",
+    "pageViews": 18,
+    "landingViews": 0,
+    "catalogViews": 18,
+    "uniqueVisitorIds": [
+      "v_siie9rxru_mujyula7",
+      "v_anton_sitnikov_1537"
+    ],
+    "apartmentViews": 2,
+    "swipesRight": 2,
+    "swipesLeft": 0,
+    "telegramClicks": 0,
+    "apartmentBreakdown": {
+      "myhome-26142052": {
+        "title": "Сдается 1-комнатная квартира в Сабуртало",
+        "views": 1,
+        "likes": 1,
+        "passes": 0
+      },
+      "myhome-26142775": {
+        "title": "Сдается 4-комнатная квартира в Ваке",
+        "views": 1,
+        "likes": 1,
+        "passes": 0
+      }
+    }
+  },
+  "2026-09-29": {
+    "date": "2026-09-29",
+    "pageViews": 4,
+    "landingViews": 0,
+    "catalogViews": 4,
+    "uniqueVisitorIds": [
+      "v_siie9rxru_mujyula7"
+    ],
+    "apartmentViews": 2,
+    "swipesRight": 2,
+    "swipesLeft": 0,
+    "telegramClicks": 0,
+    "apartmentBreakdown": {
+      "myhome-26142052": {
+        "title": "Сдается 1-комнатная квартира в Сабуртало",
+        "views": 1,
+        "likes": 1,
+        "passes": 0
+      },
+      "myhome-26142775": {
+        "title": "Сдается 4-комнатная квартира в Ваке",
+        "views": 1,
+        "likes": 1,
+        "passes": 0
+      }
+    }
+  },
+  "2026-10-03": {
+    "date": "2026-10-03",
+    "pageViews": 2,
+    "landingViews": 0,
+    "catalogViews": 2,
+    "uniqueVisitorIds": [
+      "v_siie9rxru_mujyula7"
+    ],
+    "apartmentViews": 0,
+    "swipesRight": 0,
+    "swipesLeft": 0,
+    "telegramClicks": 0,
+    "apartmentBreakdown": {}
+  }
+}

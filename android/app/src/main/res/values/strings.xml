@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Rentch</string>
+    <string name="title_activity_main">Rentch</string>
+    <string name="package_name">city.rentch.app</string>
+    <string name="custom_url_scheme">city.rentch.app</string>
+</resources>

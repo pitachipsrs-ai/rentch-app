@@ -1,0 +1,8 @@
+{
+  "name": "Rentch",
+  "description": "Сервис поиска аренды квартир в Тбилиси в формате свайпов: мгновенный мэтч «Rentch!», диалог с роботом и собственником, интерактивная карта и CRM-система для бронирования осмотров.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

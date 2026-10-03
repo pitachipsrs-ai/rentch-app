@@ -1,0 +1,38 @@
+[
+  {
+    "id": "audit-restore-sitnikov",
+    "timestamp": "29.09.2026, 04:20:00",
+    "isoTime": "2026-09-29T04:20:00.000Z",
+    "event": "restore_backup",
+    "email": "ai9292@mail.ru",
+    "ip": "Система восстановления Rentch",
+    "userAgent": "Rentch Security Shield v2.0",
+    "deviceSummary": "Серверная защита • Восстановление базы",
+    "details": "Восстановлен мэтч и запись на осмотр от клиента «Ситников Антон» (+995595766600, 1-комн. квартира в Сабуртало, ул. А. Мицкевича 14, $550, осмотр в 19:00).",
+    "status": "success"
+  },
+  {
+    "id": "audit-restore-rodion",
+    "timestamp": "28.09.2026, 20:28:15",
+    "isoTime": "2026-09-28T20:28:15.000Z",
+    "event": "restore_backup",
+    "email": "ai9292@mail.ru",
+    "ip": "Система восстановления Rentch",
+    "userAgent": "Rentch Security Shield v2.0",
+    "deviceSummary": "Серверная защита • Восстановление базы",
+    "details": "Восстановлен лид от клиента «Родион» (квартира в Ваке, ул. Н. Жвания 10, $1750) и все свайпы вправо. Посторонних входов в админ-панель не зафиксировано.",
+    "status": "success"
+  },
+  {
+    "id": "audit-init-1",
+    "timestamp": "28.09.2026, 20:28:00",
+    "isoTime": "2026-09-28T20:28:00.000Z",
+    "event": "security_init",
+    "email": "ai9292@mail.ru",
+    "ip": "Система защиты Rentch",
+    "userAgent": "Rentch Security Shield v2.0",
+    "deviceSummary": "Серверная защита активирована",
+    "details": "Включён аудит входов в админ-панель, криптографические 256-битные токены сессий, защита от перебора пароля (Brute-Force Lockout: 5 попыток / 15 мин), защита от SSRF/XSS и автоматическое резервное копирование лидов.",
+    "status": "info"
+  }
+]
