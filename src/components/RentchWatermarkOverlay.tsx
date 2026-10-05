@@ -5,12 +5,14 @@ import { DEFAULT_AGENT_PHONE } from '../utils/phoneSanitizer';
 interface RentchWatermarkOverlayProps {
   /** Size variant: 'sm' (catalog preview), 'md' (swipe cards), 'lg' (full modal) */
   size?: 'sm' | 'md' | 'lg';
-  /** Show bottom-right mask covering MyHome watermark */
+  /** Show bottom-right mask covering foreign agency watermark */
   maskMyHome?: boolean;
-  /** Opacity of the center watermark (default 0.70) */
+  /** Opacity of the center watermark (default 0.50) */
   opacity?: number;
-  /** Whether to show the center watermark logo (defaults to false for clear photo view) */
+  /** Whether to show the center watermark logo */
   showCenterWatermark?: boolean;
+  /** Whether to show the verified Rentch badge in center of card (defaults to true) */
+  showVerifiedBadge?: boolean;
 }
 
 export const RentchWatermarkOverlay: React.FC<RentchWatermarkOverlayProps> = ({
@@ -18,6 +20,7 @@ export const RentchWatermarkOverlay: React.FC<RentchWatermarkOverlayProps> = ({
   maskMyHome = true,
   opacity = 0.5,
   showCenterWatermark = false,
+  showVerifiedBadge = true,
 }) => {
   const imgWidthClass =
     size === 'sm'
@@ -43,24 +46,25 @@ export const RentchWatermarkOverlay: React.FC<RentchWatermarkOverlayProps> = ({
         </div>
       )}
 
-      {/* 2. MASK FOR MYHOME WATERMARK (BOTTOM-RIGHT CORNER) */}
-      {maskMyHome && (
-        <div className="absolute bottom-2.5 right-2.5 z-20 pointer-events-none select-none">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-950/90 backdrop-blur-md border border-white/20 shadow-xl text-white">
-            <div className="w-4 h-4 rounded-full bg-rose-500 flex items-center justify-center shrink-0">
+      {/* 2. PLASHKA "RENTCH ПРОВЕРЕНО" - CENTERED ON CARD */}
+      {showVerifiedBadge && (
+        <div className="absolute top-7 left-1/2 -translate-x-1/2 z-20 pointer-events-none select-none">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-950/85 backdrop-blur-md border border-white/25 shadow-xl text-white">
+            <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
               <ShieldCheck className="w-2.5 h-2.5 text-white stroke-[3]" />
             </div>
-            <div className="flex flex-col leading-none">
-              <span className="text-[10px] font-black tracking-tight text-white flex items-center gap-1">
-                <span>Rentch</span>
-                <span className="text-emerald-400 font-bold">• Проверено</span>
-              </span>
-              <span className="text-[9px] text-stone-300 font-mono flex items-center gap-1 mt-0.5">
-                <Phone className="w-2.5 h-2.5 text-emerald-400" />
-                <span>{DEFAULT_AGENT_PHONE}</span>
-              </span>
-            </div>
+            <span className="text-[11px] font-black tracking-tight text-white flex items-center gap-1">
+              <span>Rentch</span>
+              <span className="text-emerald-400 font-bold">• Проверено</span>
+            </span>
           </div>
+        </div>
+      )}
+
+      {/* 3. Subtle opaque mask in bottom-right corner to cover external agency watermarks */}
+      {maskMyHome && (
+        <div className="absolute bottom-2.5 right-2.5 z-10 pointer-events-none select-none">
+          <div className="h-6 w-16 rounded-lg bg-black/75 backdrop-blur-md" />
         </div>
       )}
     </>

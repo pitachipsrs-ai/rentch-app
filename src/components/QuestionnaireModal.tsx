@@ -7,19 +7,22 @@ import {
   CheckCircle2, 
   ArrowRight, 
   UserCheck, 
-  Sparkles,
-  Phone,
-  Send
+  Sparkles, 
+  Phone, 
+  Send,
+  MapPin
 } from 'lucide-react';
-import { LeasePeriod, QuestionnaireAnswers, UserProfile } from '../types';
+import { LeasePeriod, QuestionnaireAnswers, UserProfile, RentchCity } from '../types';
+import { RENTCH_CITIES } from '../utils/districtUtils';
 
 interface QuestionnaireModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onComplete: (profile: UserProfile, answers: QuestionnaireAnswers) => void;
+  onComplete: (profile: UserProfile, answers: QuestionnaireAnswers, city?: RentchCity) => void;
   pendingApartmentTitle?: string;
   initialAnswers?: Partial<QuestionnaireAnswers>;
   userProfile?: UserProfile;
+  activeCity?: RentchCity;
 }
 
 const FAKE_NAMES = new Set(['Иван Смирнов', 'Игорь Азаров', 'Арендатор', 'Клиент', 'Клиент Rentch']);
@@ -37,8 +40,10 @@ export const QuestionnaireModal: React.FC<QuestionnaireModalProps> = ({
   pendingApartmentTitle,
   initialAnswers,
   userProfile,
+  activeCity = 'tbilisi',
 }) => {
   const [step, setStep] = useState<number>(1);
+  const [selectedCity, setSelectedCity] = useState<RentchCity>(activeCity);
   
   // Streamlined fields: questions A & B only
   const [period, setPeriod] = useState<LeasePeriod>(initialAnswers?.period || 'month_to_year');
@@ -83,7 +88,7 @@ export const QuestionnaireModal: React.FC<QuestionnaireModalProps> = ({
       telegramNotificationsEnabled: true,
     };
 
-    onComplete(profile, answers);
+    onComplete(profile, answers, selectedCity);
   };
 
   return (
@@ -122,9 +127,9 @@ export const QuestionnaireModal: React.FC<QuestionnaireModalProps> = ({
             </h2>
             <p className="text-xs text-rose-50/90 mt-1 line-clamp-2">
               {pendingApartmentTitle ? (
-                <>Для бронирования просмотра объекта <strong className="text-white">«{pendingApartmentTitle}»</strong> ответьте на 2 вопроса</>
+                <>Для бронирования просмотра объекта <strong className="text-white">«{pendingApartmentTitle}»</strong> ответьте на вопросы</>
               ) : (
-                'Всего 2 коротких вопроса для идеального подбора квартиры в Тбилиси'
+                'Короткая анкета для идеального подбора квартиры'
               )}
             </p>
 
@@ -134,7 +139,7 @@ export const QuestionnaireModal: React.FC<QuestionnaireModalProps> = ({
               <div className={`h-1.5 flex-1 rounded-full ${step >= 2 ? 'bg-white' : 'bg-white/30'}`} />
             </div>
             <div className="flex justify-between text-[11px] text-white/80 mt-1">
-              <span>Шаг 1: Срок и гости</span>
+              <span>Шаг 1: Город и срок</span>
               <span>Шаг 2: Контакты</span>
             </div>
           </div>
@@ -143,6 +148,32 @@ export const QuestionnaireModal: React.FC<QuestionnaireModalProps> = ({
           <div className="flex-1 overflow-y-auto overscroll-contain p-5">
             {step === 1 ? (
               <div className="space-y-5">
+                {/* Question: City selection */}
+                <div id="q-city-select" className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-bold text-stone-800">
+                    <MapPin className="w-4 h-4 text-rose-500" />
+                    <span>В каком городе ищете жилье?</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {RENTCH_CITIES.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        id={`questionnaire-city-${c.id}`}
+                        onClick={() => setSelectedCity(c.id)}
+                        className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                          selectedCity === c.id
+                            ? 'border-rose-500 bg-rose-50 text-rose-900 font-black shadow-xs ring-2 ring-rose-500/20'
+                            : 'border-stone-200 hover:border-stone-300 bg-stone-50/50 text-stone-700'
+                        }`}
+                      >
+                        <div className="text-xl">{c.flag}</div>
+                        <div className="text-xs font-bold mt-1">{c.nameRu}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Question A: Lease Period */}
                 <div id="q-lease-period" className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-bold text-stone-800">

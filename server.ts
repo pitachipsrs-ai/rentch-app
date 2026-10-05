@@ -647,6 +647,7 @@ function reconcileChatsIntoLeads(
 
 function isFake(a: any): boolean {
   if (!a || !a.id) return true;
+  if (a.rentalType === 'daily') return false;
   const fakeIds = new Set([
     'apt-catalog-1',
     'apt-catalog-2',
@@ -814,6 +815,94 @@ async function startServer() {
   // API Routes
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', time: new Date().toISOString() });
+  });
+
+  // Daily Rental Booking notification & persistence endpoint
+  app.post('/api/bookings/notify', (req, res) => {
+    try {
+      const { booking } = req.body || {};
+      if (!booking || !booking.apartmentId) {
+        return res.status(400).json({ ok: false, error: 'Invalid booking data' });
+      }
+
+      // 1. Update apartment's bookedRanges in data/apartments.json
+      const apts = readApartments();
+      const targetApt = apts.find((a: any) => a.id === booking.apartmentId);
+      if (targetApt) {
+        targetApt.bookedRanges = targetApt.bookedRanges || [];
+        targetApt.bookedRanges.push({
+          id: booking.id,
+          startDate: booking.checkInDate,
+          endDate: booking.checkOutDate,
+          guestName: booking.guestName,
+          guestPhone: booking.guestPhone,
+        });
+        writeApartments(apts);
+      }
+
+      // 2. Also register in CRM Leads as paid
+      const leads = readCrmLeads();
+      const newLead: any = {
+        id: `crm-booking-${booking.id}`,
+        clientName: booking.guestName,
+        clientPhone: booking.guestPhone,
+        clientTelegram: booking.guestTelegram,
+        stage: 'paid',
+        apartmentId: booking.apartmentId,
+        apartmentTitle: booking.apartmentTitle,
+        apartmentDistrict: booking.apartmentDistrict,
+        apartmentAddress: booking.apartmentAddress,
+        apartmentImage: booking.apartmentImage,
+        apartmentPriceUsd: booking.totalAmount,
+        paidAmountUsd: booking.totalAmount,
+        registeredAt: 'Только что',
+        notes: `ПОСУТОЧНАЯ АРЕНДА (ОПЛАЧЕНО 100%): Бронь #${booking.id} (${booking.checkInDate} — ${booking.checkOutDate}). Оплачено ${booking.totalAmountRub} ₽ ($${booking.totalAmount}). Комиссия сервиса 15%: $${booking.serviceFeeAmount}. Метод: ${booking.paymentMethod}. Код: ${booking.accessCode}`,
+        messages: [
+          {
+            id: `msg-${Date.now()}`,
+            sender: 'bot',
+            text: `✅ Бронь #${booking.id} оплачена! Гость: ${booking.guestName}, тел: ${booking.guestPhone}. Заезд: ${booking.checkInDate}, выезд: ${booking.checkOutDate}. Код ключей: ${booking.accessCode}`,
+            timestamp: 'только что',
+          },
+        ],
+      };
+      writeCrmLeads([newLead, ...leads]);
+
+      // 3. Send Telegram notification if token configured
+      const cfg = readTelegramConfig();
+      const botToken = cfg.botToken || process.env.TELEGRAM_BOT_TOKEN;
+      if (botToken) {
+        const text = `🛎 <b>НОВАЯ ПОСУТОЧНАЯ БРОНЬ В RENTCH!</b>\n\n` +
+          `🏠 <b>Объект:</b> ${booking.apartmentTitle}\n` +
+          `📍 <b>Адрес:</b> ${booking.apartmentAddress}\n` +
+          `👤 <b>Гость:</b> ${booking.guestName} (${booking.guestPhone} ${booking.guestTelegram || ''})\n` +
+          `📅 <b>Даты:</b> ${booking.checkInDate} — ${booking.checkOutDate} (${booking.nightsCount} ноч.)\n` +
+          `👥 <b>Гостей:</b> ${booking.guestsCount}\n` +
+          `💳 <b>Оплачено:</b> ${booking.totalAmountRub} ₽ ($${booking.totalAmount})\n` +
+          `💰 <b>Комиссия Rentch 15%:</b> +$${booking.serviceFeeAmount}\n` +
+          `🔑 <b>Код от ключей/домофона:</b> <code>${booking.accessCode}</code>\n` +
+          `🔖 <b>Номер брони:</b> <code>#${booking.id}</code>`;
+
+        const subscribers = readTelegramSubscribers();
+        for (const sub of subscribers) {
+          if (sub.chatId) {
+            fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: sub.chatId,
+                text,
+                parse_mode: 'HTML',
+              }),
+            }).catch(() => {});
+          }
+        }
+      }
+
+      res.json({ ok: true, bookingId: booking.id });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e?.message || 'Booking save error' });
+    }
   });
 
   // Get today's, all-time, and historical view/swipe analytics
@@ -2406,6 +2495,18 @@ async function startServer() {
     } catch (err: any) {
       console.error('Error importing post-form:', err);
       res.status(500).send(`<h3>Ошибка распознавания: ${escapeHtml(err.message)}</h3><p><a href="/">Вернуться</a></p>`);
+    }
+  });
+
+  // Automated endpoint to sync/parse 500 daily rental apartments directly from MyHome.ge
+  app.post('/api/apartments/parse-daily', async (_req, res) => {
+    try {
+      execSync('node scripts/parse_myhome_daily.mjs', { timeout: 120000 });
+      const current = readApartments();
+      const dailyCount = current.filter((a: any) => a.rentalType === 'daily').length;
+      res.json({ ok: true, dailyCount, totalCount: current.length });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e?.message || 'Error syncing daily apartments' });
     }
   });
 

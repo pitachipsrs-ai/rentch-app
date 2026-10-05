@@ -1,5 +1,83 @@
 [
   {
+    "id": "crm-chat-myhome-25392786",
+    "clientName": "Клиент Rentch",
+    "clientPhone": "+995 599 00-00-00",
+    "stage": "registered",
+    "apartmentId": "myhome-25392786",
+    "apartmentTitle": "Сдается 3-комнатная квартира в Диди Дигоми",
+    "apartmentDistrict": "Диди Дигоми (Didi Dighomi)",
+    "apartmentAddress": "б. уолшис ул.",
+    "apartmentPriceUsd": 850,
+    "apartmentImage": "https://static-api-statements.tnet.ge/uploads/202607/20260707/statements/IsVm9wz6a4d3d88a4b5f.webp",
+    "apartmentSourceUrl": "https://www.myhome.ge/ru/nedvizhimost/sdaetsia-3-komnatnaia-kvartira-v-didi-digomi-25392786/",
+    "registeredAt": "Только что",
+    "notes": "Написал в чат по объекту «Сдается 3-комнатная квартира в Диди Дигоми»",
+    "messages": [
+      {
+        "id": "bot-welcome-myhome-25392786",
+        "sender": "bot",
+        "text": "Здравствуйте! Рады приветствовать вас в Rentch 🇬🇪\nПоздравляем с взаимным Rentch! по квартире «Сдается 3-комнатная квартира в Диди Дигоми».\nЯ виртуальный помощник. Мы готовы забронировать удобное время для очного или онлайн-просмотра квартиры.\n\nПожалуйста, нажмите на кнопку подтверждения просмотра или выберите подходящий слот, чтобы зафиксировать время встречи!",
+        "timestamp": "08:06",
+        "isAction": true,
+        "actionType": "confirm_viewing"
+      }
+    ],
+    "unreadByAdmin": 1
+  },
+  {
+    "id": "crm-chat-myhome-23987109",
+    "clientName": "Клиент Rentch",
+    "clientPhone": "+995 599 00-00-00",
+    "stage": "registered",
+    "apartmentId": "myhome-23987109",
+    "apartmentTitle": "Сдается 4-комнатная квартира в Авлабари",
+    "apartmentDistrict": "Ортачала (Ortachala)",
+    "apartmentAddress": "Бочорма ул. 18",
+    "apartmentPriceUsd": 1700,
+    "apartmentImage": "https://static-api-statements.tnet.ge/uploads/202609/20260917/statements/8I0XuP76aabaa13440c6.webp",
+    "apartmentSourceUrl": "https://www.myhome.ge/ru/nedvizhimost/sdaetsia-4-komnatnaia-kvartira-v-avlabari-23987109/",
+    "registeredAt": "Только что",
+    "notes": "Написал в чат по объекту «Сдается 4-комнатная квартира в Авлабари»",
+    "messages": [
+      {
+        "id": "bot-welcome-myhome-23987109",
+        "sender": "bot",
+        "text": "Здравствуйте! Рады приветствовать вас в Rentch 🇬🇪\nПоздравляем с взаимным Rentch! по квартире «Сдается 4-комнатная квартира в Авлабари».\nЯ виртуальный помощник. Мы готовы забронировать удобное время для очного или онлайн-просмотра квартиры.\n\nПожалуйста, нажмите на кнопку подтверждения просмотра или выберите подходящий слот, чтобы зафиксировать время встречи!",
+        "timestamp": "08:06",
+        "isAction": true,
+        "actionType": "confirm_viewing"
+      }
+    ],
+    "unreadByAdmin": 1
+  },
+  {
+    "id": "crm-chat-myhome-25667829",
+    "clientName": "Клиент Rentch",
+    "clientPhone": "+995 599 00-00-00",
+    "stage": "registered",
+    "apartmentId": "myhome-25667829",
+    "apartmentTitle": "Сдается 2-комнатная квартира в Мухиани",
+    "apartmentDistrict": "Глдани (Gldani)",
+    "apartmentAddress": "Мухианис дасахлеба - I мкр.",
+    "apartmentPriceUsd": 400,
+    "apartmentImage": "https://static-api-statements.tnet.ge/uploads/202608/20260807/statements/SjlqnMm6a74f867e58e3.webp",
+    "apartmentSourceUrl": "https://www.myhome.ge/ru/nedvizhimost/sdaetsia-2-komnatnaia-kvartira-v-muxiani-25667829/",
+    "registeredAt": "Только что",
+    "notes": "Написал в чат по объекту «Сдается 2-комнатная квартира в Мухиани»",
+    "messages": [
+      {
+        "id": "bot-welcome-myhome-25667829",
+        "sender": "bot",
+        "text": "Здравствуйте! Рады приветствовать вас в Rentch 🇬🇪\nПоздравляем с взаимным Rentch! по квартире «Сдается 2-комнатная квартира в Мухиани».\nЯ виртуальный помощник. Мы готовы забронировать удобное время для очного или онлайн-просмотра квартиры.\n\nПожалуйста, нажмите на кнопку подтверждения просмотра или выберите подходящий слот, чтобы зафиксировать время встречи!",
+        "timestamp": "07:27",
+        "isAction": true,
+        "actionType": "confirm_viewing"
+      }
+    ],
+    "unreadByAdmin": 1
+  },
+  {
     "id": "crm-chat-myhome-26142052",
     "clientName": "Ситников Антон",
     "clientPhone": "+995595766600",
@@ -16,7 +94,7 @@
       "time": "19:00"
     },
     "registeredAt": "28 сентября в 15:37",
-    "notes": "👥 Совместная аренда 50/50 (Соседи): клиент + Давид (26 лет, @david_rentch) по объекту «Сдается 1-комнатная квартира в Сабуртало»",
+    "notes": "Запись через приложение Rentch на осмотр объекта Сдается 1-комнатная квартира в Сабуртало (Сегодня (28 сентября) в 19:00)",
     "messages": [
       {
         "id": "bot-welcome-myhome-26142052",

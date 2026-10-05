@@ -13,10 +13,12 @@ import {
   Armchair, 
   Calendar, 
   CheckCircle2, 
-  RotateCcw,
-  Train,
-  Share2,
-  Check
+  Train, 
+  Share2, 
+  Check,
+  ChevronUp,
+  ShieldCheck,
+  Clock
 } from 'lucide-react';
 import { Apartment } from '../types';
 import { stripPhoneAndContactMentions } from '../utils/phoneSanitizer';
@@ -46,15 +48,18 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
   const likeOpacity = useTransform(x, [20, 110], [0, 1]);
   const nopeOpacity = useTransform(x, [-20, -110], [0, 1]);
 
+  const isDaily = apartment.rentalType === 'daily';
+  const pricePerNight = apartment.pricePerNight || Math.round(apartment.priceUsd / 30) || 45;
+
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
     triggerHaptic('selection');
 
     const shareUrl = `${window.location.origin}${window.location.pathname}?apartment=${encodeURIComponent(apartment.id)}`;
     const shareTitle = `Rentch: ${apartment.title}`;
-    const shareText = `Посмотри эту квартиру в Тбилиси (${apartment.district}): $${apartment.priceUsd}/мес!`;
+    const priceText = isDaily ? `$${pricePerNight}/сут` : `$${apartment.priceUsd}/мес`;
+    const shareText = `Посмотри этот объект в Rentch (${apartment.district}): ${priceText}!`;
 
-    // 1. Try standard Web Share API
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
@@ -67,14 +72,10 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
         setTimeout(() => setIsCopied(false), 2500);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') {
-          // User dismissed native share sheet
-          return;
-        }
+        if (err.name === 'AbortError') return;
       }
     }
 
-    // 2. Clipboard API fallback
     try {
       const textToCopy = `${shareText}\n${shareUrl}`;
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -110,27 +111,17 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
 
   const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
+    triggerHaptic('selection');
     setCurrentImageIndex((prev) => (prev + 1) % apartment.images.length);
   };
 
   const prevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
+    triggerHaptic('selection');
     setCurrentImageIndex((prev) => (prev - 1 + apartment.images.length) % apartment.images.length);
   };
 
   const gelPrice = apartment.priceGel || Math.round(apartment.priceUsd * 2.72);
-
-  const furnitureText = {
-    full: 'С мебелью',
-    partial: 'Частично',
-    none: 'Без мебели',
-  }[apartment.furniture];
-
-  const periodText = {
-    month: 'От 1 месяца',
-    month_to_year: 'От 1 до 12 мес',
-    year_plus: 'От 1 года',
-  }[apartment.minPeriod];
 
   const accurateDistrict = getAccurateApartmentDistrict(apartment);
   const displayDistrict = formatDistrictDisplay(accurateDistrict);
@@ -146,12 +137,12 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
       transition={{ type: 'spring', stiffness: 350, damping: 28, mass: 0.8 }}
       onDragEnd={handleDragEnd}
       whileDrag={{ cursor: 'grabbing' }}
-      className={`absolute inset-0 w-full h-full rounded-3xl overflow-hidden bg-white shadow-2xl border border-stone-200 select-none ${
+      className={`absolute inset-0 w-full h-full rounded-[32px] overflow-hidden bg-stone-900 shadow-2xl border border-stone-200 select-none ${
         isTopCard ? 'cursor-grab touch-pan-y z-10' : 'pointer-events-none'
       }`}
     >
-      {/* Photo carousel container */}
-      <div className="relative w-full h-[62%] bg-stone-900 overflow-hidden">
+      {/* Full-bleed Photo container (occupies entire card just like in Tinder screenshot) */}
+      <div className="relative w-full h-full bg-stone-900 overflow-hidden">
         <img
           src={normalizeApartmentImageUrl(apartment.images[currentImageIndex], currentImageIndex)}
           alt={apartment.title}
@@ -160,205 +151,187 @@ export const SwipeCard: React.FC<SwipeCardProps> = ({
           loading="eager"
         />
 
-        {/* Masking Badge for verified Rentch agency */}
-        <RentchWatermarkOverlay size="md" maskMyHome={true} opacity={0.5} showCenterWatermark={false} />
+        {/* Agency watermark masking */}
+        {!isDaily && (
+          <RentchWatermarkOverlay size="md" maskMyHome={true} opacity={0.4} showCenterWatermark={false} showVerifiedBadge={false} />
+        )}
 
-        {/* Gradient shadow for text visibility */}
-        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-stone-900/30 pointer-events-none" />
+        {/* Cinematic gradient vignette for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/35 pointer-events-none" />
 
         {/* Swipe visual stamps */}
         {isTopCard && (
           <>
             <motion.div
               style={{ opacity: likeOpacity }}
-              className="absolute top-8 right-8 rotate-12 border-4 border-emerald-400 bg-emerald-500/20 backdrop-blur-xs text-emerald-400 font-black text-2xl sm:text-3xl px-4 py-1.5 rounded-2xl tracking-wider uppercase z-20 pointer-events-none"
+              className="absolute top-12 right-6 rotate-12 border-4 border-emerald-400 bg-emerald-500/30 backdrop-blur-xs text-emerald-400 font-black text-2xl sm:text-3xl px-4 py-1.5 rounded-2xl tracking-wider uppercase z-20 pointer-events-none shadow-xl"
             >
-              RENTCH! ♥
+              {isDaily ? 'БРОНЬ! ♥' : 'RENTCH! ♥'}
             </motion.div>
             <motion.div
               style={{ opacity: nopeOpacity }}
-              className="absolute top-8 left-8 -rotate-12 border-4 border-rose-500 bg-rose-500/20 backdrop-blur-xs text-rose-500 font-black text-2xl sm:text-3xl px-4 py-1.5 rounded-2xl tracking-wider uppercase z-20 pointer-events-none"
+              className="absolute top-12 left-6 -rotate-12 border-4 border-rose-500 bg-rose-500/30 backdrop-blur-xs text-rose-500 font-black text-2xl sm:text-3xl px-4 py-1.5 rounded-2xl tracking-wider uppercase z-20 pointer-events-none shadow-xl"
             >
               ПРОПУСК ✕
             </motion.div>
           </>
         )}
 
-        {/* Image pagination indicators */}
-        <div className="absolute top-3 inset-x-3 flex gap-1.5 z-10">
+        {/* Image Story Progress Bars on top (Exactly like Tinder) */}
+        <div className="absolute top-3 inset-x-3 flex gap-1.5 z-20 pointer-events-none">
           {apartment.images.map((_, idx) => (
             <div
               key={idx}
               className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-                idx === currentImageIndex ? 'bg-white shadow' : 'bg-white/40'
+                idx === currentImageIndex ? 'bg-white shadow' : 'bg-white/35'
               }`}
             />
           ))}
         </div>
 
         {/* Left / Right click zones for photos */}
-        {apartment.images.length > 1 && (
-          <>
-            <button
-              type="button"
-              onClick={prevImage}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-xs transition-colors cursor-pointer z-10"
-              aria-label="Previous photo"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={nextImage}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-xs transition-colors cursor-pointer z-10"
-              aria-label="Next photo"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </>
-        )}
+        <div 
+          onClick={prevImage}
+          className="absolute left-0 top-0 bottom-24 w-1/3 z-10 cursor-pointer"
+          title="Предыдущее фото"
+        />
+        <div 
+          onClick={nextImage}
+          className="absolute right-0 top-0 bottom-24 w-1/3 z-10 cursor-pointer"
+          title="Следующее фото"
+        />
 
-        {/* Badges on image */}
-        <div className="absolute top-8 left-4 flex flex-wrap gap-1.5 z-10">
-          {apartment.isNew && (
-            <span className="bg-amber-500 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-sm">
-              NEW
+        {/* Badges row on top */}
+        <div className="absolute top-6 left-4 right-4 flex items-center justify-between z-20 pointer-events-none">
+          <div className="flex flex-wrap gap-1.5">
+            {isDaily ? (
+              <span className="bg-emerald-500/95 backdrop-blur-md text-stone-950 font-black text-[11px] px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-stone-950 animate-pulse" />
+                <span>Посуточно</span>
+              </span>
+            ) : (
+              <span className="bg-stone-900/80 backdrop-blur-md text-white font-bold text-[11px] px-2.5 py-0.5 rounded-full">
+                Долгосрочно
+              </span>
+            )}
+
+            <span className="bg-white/20 backdrop-blur-md text-white text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
+              {displayDistrict}
             </span>
-          )}
-          <span className="bg-stone-900/80 backdrop-blur-xs text-white text-[11px] font-medium px-2.5 py-0.5 rounded-full">
-            {displayDistrict}
-          </span>
+          </div>
+
+          {/* Плашка "Rentch Проверено" по центру карточки */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-0 pointer-events-none select-none">
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-950/85 backdrop-blur-md border border-white/25 shadow-xl text-white">
+              <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-2.5 h-2.5 text-white stroke-[3]" />
+              </div>
+              <span className="text-[11px] font-black tracking-tight text-white flex items-center gap-1 whitespace-nowrap">
+                <span>Rentch</span>
+                <span className="text-emerald-400 font-bold">• Проверено</span>
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleShare}
+            className="pointer-events-auto w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-md transition cursor-pointer ml-auto"
+            title="Поделиться"
+          >
+            {isCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4 text-white" />}
+          </button>
         </div>
 
         {/* Floating Copied Link Notification */}
         {isCopied && (
-          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 bg-stone-900/95 text-white text-xs font-bold px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 backdrop-blur-md border border-white/20 pointer-events-none whitespace-nowrap animate-bounce">
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 bg-stone-900/95 text-white text-xs font-bold px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 backdrop-blur-md border border-white/20 pointer-events-none whitespace-nowrap">
             <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
-            <span>Ссылка на квартиру скопирована!</span>
+            <span>Ссылка скопирована!</span>
           </div>
         )}
 
-        {/* Bottom overlay info on image */}
-        <div className="absolute bottom-3 inset-x-4 text-white z-10">
-          <div className="flex items-end justify-between gap-2">
-            <div className="min-w-0 flex-1">
+        {/* Bottom Profile Details (Matching Tinder Screenshot layout) */}
+        <div className="absolute bottom-4 inset-x-4 text-white z-20">
+          <div className="flex items-end justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-1">
+              {/* Badges above name: e.g. "Недалеко" / "Свободно на даты" */}
+              <div className="flex items-center gap-1.5">
+                <span className="px-2.5 py-0.5 rounded-full bg-white/25 backdrop-blur-md text-white text-[10px] font-bold">
+                  {isDaily ? 'Свободно для бронирования' : 'Недалеко'}
+                </span>
+                {apartment.landlord?.rating && (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-400/90 text-stone-950 text-[10px] font-black">
+                    ★ {apartment.landlord.rating}
+                  </span>
+                )}
+              </div>
+
+              {/* Title & Price Header */}
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-1.5 truncate">
+                  <span>{stripPhoneAndContactMentions(apartment.title)}</span>
+                  <CheckCircle2 className="w-5 h-5 text-sky-400 shrink-0 inline fill-sky-400/20" />
+                </h2>
+              </div>
+
+              {/* Price Tag */}
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold tracking-tight">
-                  {apartment.currency === 'EUR' || apartment.city === 'belgrade'
-                    ? `€${apartment.originalPrice || apartment.priceUsd}`
-                    : apartment.currency === 'GEL'
-                    ? `${gelPrice} ₾`
-                    : `$${apartment.priceUsd}`}
+                <span className="text-2xl sm:text-3xl font-black text-white">
+                  {isDaily ? (
+                    `$${pricePerNight}`
+                  ) : apartment.currency === 'EUR' || apartment.city === 'belgrade' ? (
+                    `€${apartment.originalPrice || apartment.priceUsd}`
+                  ) : (
+                    `$${apartment.priceUsd}`
+                  )}
                 </span>
                 <span className="text-xs text-stone-300 font-medium">
-                  {apartment.currency === 'EUR' || apartment.city === 'belgrade'
-                    ? `/ мес`
-                    : apartment.currency === 'GEL'
-                    ? `/ мес (~$${apartment.priceUsd})`
-                    : `/ мес (~${gelPrice} ₾)`}
+                  {isDaily ? '/ сутки' : `/ мес (~${gelPrice} ₾)`}
                 </span>
+                {isDaily && (
+                  <span className="text-[11px] text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                    Комиссия 15% включена в расчет
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-stone-200 mt-0.5 flex items-center gap-1 line-clamp-1">
-                <MapPin className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
+
+              {/* Location pin with distance/address */}
+              <p className="text-xs text-stone-200 flex items-center gap-1 line-clamp-1">
+                <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                 <span>{apartment.address}</span>
               </p>
-            </div>
 
-            {/* Action buttons on card: Share + Info */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                type="button"
-                id={`share-card-${apartment.id}-btn`}
-                onClick={handleShare}
-                className={`h-9 px-3 rounded-full backdrop-blur-md text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-lg text-xs font-bold active:scale-95 ${
-                  isCopied
-                    ? 'bg-emerald-600/90 text-white ring-2 ring-emerald-400'
-                    : 'bg-white/20 hover:bg-white/35 text-white'
-                }`}
-                title="Поделиться ссылкой на квартиру с друзьями"
-                aria-label="Поделиться"
-              >
-                {isCopied ? (
+              {/* Quick specs chips */}
+              <div className="flex items-center gap-2 pt-1 text-[11px] text-stone-300 font-medium">
+                <span>{apartment.rooms} комн. ({apartment.areaSqm} м²)</span>
+                <span>•</span>
+                <span>{apartment.floor}/{apartment.totalFloors} эт.</span>
+                {isDaily && apartment.maxGuests && (
                   <>
-                    <Check className="w-3.5 h-3.5 text-emerald-200 stroke-[3]" />
-                    <span className="text-[11px] font-bold text-white">Скопировано!</span>
-                  </>
-                ) : (
-                  <>
-                    <Share2 className="w-3.5 h-3.5 text-white" />
-                    <span className="text-[11px] font-bold">Поделиться</span>
+                    <span>•</span>
+                    <span>до {apartment.maxGuests} гостей</span>
                   </>
                 )}
-              </button>
-
-              <button
-                type="button"
-                id={`info-card-${apartment.id}-btn`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onInfoClick(apartment);
-                }}
-                className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/35 active:scale-95 backdrop-blur-md text-white flex items-center justify-center transition-all cursor-pointer shadow-lg"
-                title="Подробнее о квартире"
-              >
-                <Info className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Card Body details */}
-      <div className="p-4 sm:p-5 h-[38%] flex flex-col justify-between bg-white">
-        <div>
-          <h3 className="font-bold text-stone-900 text-base leading-snug line-clamp-1">
-            {stripPhoneAndContactMentions(apartment.title)}
-          </h3>
-
-          {/* Quick Specs Chips */}
-          <div className="grid grid-cols-3 gap-2 mt-3 text-xs">
-            <div className="bg-stone-100 rounded-xl p-2 flex items-center gap-2 text-stone-700">
-              <Home className="w-4 h-4 text-rose-500 flex-shrink-0" />
-              <div>
-                <div className="font-semibold">{apartment.rooms} комн.</div>
-                <div className="text-[10px] text-stone-500">{apartment.areaSqm} м²</div>
               </div>
             </div>
 
-            <div className="bg-stone-100 rounded-xl p-2 flex items-center gap-2 text-stone-700">
-              <Armchair className="w-4 h-4 text-amber-500 flex-shrink-0" />
-              <div>
-                <div className="font-semibold truncate">{furnitureText}</div>
-                <div className="text-[10px] text-stone-500">{apartment.floor}/{apartment.totalFloors} этаж</div>
-              </div>
-            </div>
-
-            <div className="bg-stone-100 rounded-xl p-2 flex items-center gap-2 text-stone-700">
-              <Calendar className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-              <div>
-                <div className="font-semibold truncate">{periodText}</div>
-                <div className="text-[10px] text-stone-500">Срок аренды</div>
-              </div>
-            </div>
+            {/* Iconic Tinder Arrow Up Button for info */}
+            <button
+              type="button"
+              id={`tinder-arrow-up-${apartment.id}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerHaptic('light');
+                onInfoClick(apartment);
+              }}
+              className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/35 active:scale-90 backdrop-blur-md text-white flex items-center justify-center transition-all cursor-pointer shadow-xl shrink-0 border border-white/20"
+              title="Открыть подробную информацию"
+              aria-label="Подробнее"
+            >
+              <ChevronUp className="w-6 h-6 stroke-[2.5]" />
+            </button>
           </div>
-
-          {apartment.metro && (
-            <div className="flex items-center gap-1.5 mt-2.5 text-xs text-stone-600 bg-rose-50/70 px-2.5 py-1 rounded-lg border border-rose-100/80">
-              <Train className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
-              <span className="font-medium text-stone-800">{apartment.metro}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Quick Highlights bar */}
-        <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
-          <div className="flex items-center gap-1.5 font-medium text-stone-700">
-            <Sparkles className="w-3.5 h-3.5 text-rose-500" />
-            <span>Готова к заселению</span>
-          </div>
-          <span className="text-[11px] text-stone-400">
-            Тбилиси • {displayDistrict}
-          </span>
         </div>
       </div>
     </motion.div>

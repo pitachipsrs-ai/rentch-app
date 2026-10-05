@@ -303,6 +303,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [formTitle, setFormTitle] = useState('');
   const [formDistrict, setFormDistrict] = useState<CityDistrict>('Ваке (Vake)');
   const [catalogCityFilter, setCatalogCityFilter] = useState<'all' | RentchCity>('all');
+  const [catalogCategoryFilter, setCatalogCategoryFilter] = useState<'all' | 'daily' | 'long_term'>('all');
   const [formAddress, setFormAddress] = useState('');
   const [formCurrency, setFormCurrency] = useState<Currency>('USD');
   const [formPriceAmount, setFormPriceAmount] = useState<number>(750);
@@ -339,6 +340,35 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [catalogZipToast, setCatalogZipToast] = useState('');
   const [isTranslatingCatalog, setIsTranslatingCatalog] = useState(false);
   const [isDeepParsingMyHome, setIsDeepParsingMyHome] = useState(false);
+  const [isParsingDaily, setIsParsingDaily] = useState(false);
+
+  const handleParseDailyMyHome500 = async () => {
+    setIsParsingDaily(true);
+    setCatalogZipToast('Парсинг 500 квартир посуточной аренды с MyHome.ge (обход страниц 1-22)...');
+    try {
+      const response = await fetch('/api/apartments/parse-daily', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      if (data.ok) {
+        setCatalogZipToast(
+          `Успешно спарсено ${data.dailyCount || 500} объектов посуточной аренды! Всего объектов: ${data.totalCount || 0}.`
+        );
+        if (onRefreshCatalog) {
+          onRefreshCatalog();
+        }
+      } else {
+        setCatalogZipToast('Ошибка при парсинге посуточных квартир: ' + (data.error || ''));
+      }
+    } catch (err: any) {
+      console.error('Daily parse error:', err);
+      setCatalogZipToast('Ошибка при парсинге посуточных квартир с MyHome');
+    } finally {
+      setIsParsingDaily(false);
+      setTimeout(() => setCatalogZipToast(''), 8000);
+    }
+  };
 
   const handleDeepParseMyHome200 = async () => {
     setIsDeepParsingMyHome(true);
@@ -2787,6 +2817,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
+                id="parse-daily-500-btn"
+                onClick={handleParseDailyMyHome500}
+                disabled={isParsingDaily}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs disabled:opacity-60"
+                title="Спарсить 500 объектов посуточной аренды с MyHome.ge"
+              >
+                {isParsingDaily ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Calendar className="w-3.5 h-3.5" />
+                )}
+                <span>{isParsingDaily ? 'Парсинг 500 посуточных...' : '⚡ Спарсить 500 посуточных (MyHome)'}</span>
+              </button>
+
+              <button
+                type="button"
                 id="deep-parse-200-catalog-btn"
                 onClick={handleDeepParseMyHome200}
                 disabled={isDeepParsingMyHome}
@@ -2798,7 +2844,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 ) : (
                   <Sparkles className="w-3.5 h-3.5" />
                 )}
-                <span>{isDeepParsingMyHome ? 'Парсинг 200 объектов...' : '⚡ +200 новых с MyHome'}</span>
+                <span>{isDeepParsingMyHome ? 'Парсинг 200 объектов...' : '⚡ +200 с MyHome'}</span>
               </button>
 
               <button
@@ -2843,28 +2889,53 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           </div>
 
-          {/* City Section Filter Tabs in Admin Catalog */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-1">
-            {[
-              { id: 'all' as const, label: `Все города (${apartments.length})` },
-              ...RENTCH_CITIES.map((c) => ({
-                id: c.id,
-                label: `${c.flag} ${c.nameRu} (${apartments.filter((a) => getApartmentCity(a) === c.id).length})`,
-              })),
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setCatalogCityFilter(tab.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                  catalogCityFilter === tab.id
-                    ? 'bg-stone-900 text-white border-stone-900'
-                    : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          {/* Section Filter Tabs in Admin Catalog (Category + City) */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-stone-100">
+            {/* Category tabs */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[
+                { id: 'all' as const, label: `Все типы (${apartments.length})` },
+                { id: 'daily' as const, label: `📅 Посуточная (${apartments.filter((a) => a.rentalType === 'daily').length})` },
+                { id: 'long_term' as const, label: `🏢 Долгосрочная (${apartments.filter((a) => a.rentalType !== 'daily').length})` },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setCatalogCategoryFilter(tab.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                    catalogCategoryFilter === tab.id
+                      ? 'bg-emerald-700 text-white border-emerald-700 shadow-2xs'
+                      : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* City tabs */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[
+                { id: 'all' as const, label: `Все города` },
+                ...RENTCH_CITIES.map((c) => ({
+                  id: c.id,
+                  label: `${c.flag} ${c.nameRu}`,
+                })),
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setCatalogCityFilter(tab.id)}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                    catalogCityFilter === tab.id
+                      ? 'bg-stone-900 text-white border-stone-900'
+                      : 'bg-stone-50 hover:bg-stone-100 text-stone-600 border-stone-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Catalog Toast */}
@@ -2905,7 +2976,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {apartments
-                .filter((apt) => catalogCityFilter === 'all' || getApartmentCity(apt) === catalogCityFilter)
+                .filter((apt) => {
+                  const matchCity = catalogCityFilter === 'all' || getApartmentCity(apt) === catalogCityFilter;
+                  const matchCategory =
+                    catalogCategoryFilter === 'all'
+                      ? true
+                      : catalogCategoryFilter === 'daily'
+                      ? apt.rentalType === 'daily'
+                      : apt.rentalType !== 'daily';
+                  return matchCity && matchCategory;
+                })
                 .map((apt) => (
                 <div key={apt.id} className="border border-stone-200 rounded-2xl overflow-hidden p-3 flex gap-3 bg-stone-50/50 hover:shadow-xs transition">
                   <div className="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-stone-900">
@@ -2928,12 +3008,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         {apt.title}
                       </h4>
                       <p className="text-[11px] text-stone-500 truncate">{apt.district} • {apt.address}</p>
-                      <div className="text-xs font-black text-rose-600 mt-0.5">
-                        {apt.currency === 'EUR' || apt.city === 'belgrade'
-                          ? `€${apt.originalPrice || apt.priceUsd}/мес`
-                          : apt.currency === 'GEL'
-                          ? `${apt.priceGel || Math.round(apt.priceUsd * 2.72)} ₾ (~$${apt.priceUsd})/мес`
-                          : `$${apt.priceUsd} (~${apt.priceGel || Math.round(apt.priceUsd * 2.72)} ₾)/мес`}
+                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                        {apt.rentalType === 'daily' ? (
+                          <>
+                            <span className="text-xs font-black text-emerald-600">
+                              ${apt.pricePerNight || 45} / сут
+                            </span>
+                            <span className="px-1.5 py-0.2 rounded-md bg-emerald-100 text-emerald-800 text-[9px] font-bold">
+                              Посуточно
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs font-black text-rose-600">
+                            {apt.currency === 'EUR' || apt.city === 'belgrade'
+                              ? `€${apt.originalPrice || apt.priceUsd}/мес`
+                              : apt.currency === 'GEL'
+                              ? `${apt.priceGel || Math.round(apt.priceUsd * 2.72)} ₾ (~$${apt.priceUsd})/мес`
+                              : `$${apt.priceUsd} (~${apt.priceGel || Math.round(apt.priceUsd * 2.72)} ₾)/мес`}
+                          </span>
+                        )}
                       </div>
                       {(() => {
                         const myhomeUrl = getMyHomeOriginalUrl(apt);

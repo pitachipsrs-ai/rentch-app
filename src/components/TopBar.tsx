@@ -8,9 +8,9 @@ import {
   Heart,
   MessageCircle,
   SlidersHorizontal,
-  LayoutGrid,
+  Zap,
 } from 'lucide-react';
-import { NotificationItem, RentchCity, UserProfile } from '../types';
+import { NotificationItem, RentalCategory, RentchCity, UserProfile } from '../types';
 import { AuthButton } from './AuthButton';
 import { PWAInstallButton } from './PWAInstallButton';
 import { RENTCH_CITIES } from '../utils/districtUtils';
@@ -34,8 +34,9 @@ interface TopBarProps {
   matchesCount?: number;
   dialoguesCount?: number;
   onOpenFilters?: () => void;
-  webCatalogMode?: 'swipe' | 'grid';
-  onChangeWebCatalogMode?: (mode: 'swipe' | 'grid') => void;
+  hasActiveFilters?: boolean;
+  rentalCategory: RentalCategory;
+  onChangeRentalCategory: (cat: RentalCategory) => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -45,170 +46,99 @@ export const TopBar: React.FC<TopBarProps> = ({
   userProfile,
   onOpenAuth,
   onOpenCrm,
-  activeCity = 'tbilisi',
-  onChangeCity,
   activeTab = 'swipe',
   onTabChange,
-  matchesCount = 0,
-  dialoguesCount = 0,
   onOpenFilters,
-  webCatalogMode = 'swipe',
-  onChangeWebCatalogMode,
+  hasActiveFilters = false,
+  rentalCategory = 'long_term',
+  onChangeRentalCategory,
 }) => {
   return (
-    <header className="w-full bg-white/95 backdrop-blur-md border-b border-stone-200/80 sticky top-0 z-30 py-2 px-3 sm:px-5 shadow-2xs">
-      <div className="max-w-6xl mx-auto flex flex-col gap-2">
+    <header className="w-full bg-white/95 backdrop-blur-md border-b border-stone-200/80 sticky top-0 z-30 shadow-2xs">
+      <div className="max-w-6xl mx-auto px-3 sm:px-5 py-2">
+        {/* Top Header Row */}
         <div className="flex items-center justify-between gap-2">
-          {/* Left: Brand Logo + Direct 1-Click City Switcher */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          {/* Left: Filter Button (Like in Tinder) + Brand Logo */}
+          <div className="flex items-center gap-2 min-w-0">
+            {onOpenFilters && (
+              <button
+                type="button"
+                id="tinder-filter-btn"
+                onClick={onOpenFilters}
+                className="w-9 h-9 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center justify-center transition-all cursor-pointer relative shadow-2xs active:scale-95 shrink-0"
+                title="Настроить фильтры поиска"
+                aria-label="Фильтры"
+              >
+                <SlidersHorizontal className="w-4 h-4 stroke-[2.2]" />
+                {hasActiveFilters && (
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white" />
+                )}
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={() => {
-                onTabChange?.('swipe');
-              }}
-              title="На главную (Свайпы и Каталог)"
-              className="flex items-center gap-2 text-left cursor-pointer hover:opacity-90 transition-opacity shrink-0"
+              onClick={() => onTabChange?.('swipe')}
+              title="На главную Rentch"
+              className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity shrink-0"
             >
               <RentchLogo size="sm" showText={true} />
             </button>
-
-            {/* Direct City Switcher Pills (Тбилиси / Ереван / Белград) */}
-            <div className="flex items-center bg-stone-100 p-0.5 rounded-full border border-stone-200/80 overflow-x-auto no-scrollbar">
-              {RENTCH_CITIES.map((city) => {
-                const isSelected = activeCity === city.id;
-                return (
-                  <button
-                    key={city.id}
-                    type="button"
-                    id={`topbar-city-${city.id}`}
-                    onClick={() => onChangeCity?.(city.id)}
-                    className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer shrink-0 ${
-                      isSelected
-                        ? 'bg-stone-900 text-white shadow-2xs'
-                        : 'text-stone-600 hover:text-stone-900'
-                    }`}
-                  >
-                    <span>{city.flag}</span>
-                    <span className={isSelected ? 'inline' : 'hidden md:inline'}>
-                      {city.nameRu}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
-          {/* Center Desktop Web Navigation Bar */}
-          {onTabChange && !isLandlord && (
-            <nav className="hidden lg:flex items-center gap-1 bg-stone-100/90 p-1 rounded-2xl border border-stone-200/70">
-              <button
-                type="button"
-                onClick={() => {
-                  onTabChange('swipe');
-                  onChangeWebCatalogMode?.('swipe');
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'swipe' && webCatalogMode === 'swipe'
-                    ? 'bg-white text-rose-600 shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                <Flame className="w-3.5 h-3.5" />
-                <span>Свайпы</span>
-              </button>
+          {/* Center: Tinder Top Category Tabs: 1. Долгосрочная аренда, 2. Посуточная аренда, 3. Double Rentch */}
+          <div className="hidden sm:flex items-center bg-stone-100/90 p-1 rounded-full border border-stone-200/80 shadow-2xs">
+            <button
+              type="button"
+              id="category-tab-long-term"
+              onClick={() => {
+                onTabChange?.('swipe');
+                onChangeRentalCategory('long_term');
+              }}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer ${
+                activeTab === 'swipe' && rentalCategory === 'long_term'
+                  ? 'bg-stone-900 text-white shadow-xs'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              Долгосрочная аренда
+            </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  onTabChange('swipe');
-                  onChangeWebCatalogMode?.('grid');
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'swipe' && webCatalogMode === 'grid'
-                    ? 'bg-white text-rose-600 shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>Каталог (Web)</span>
-              </button>
+            <button
+              type="button"
+              id="category-tab-daily"
+              onClick={() => {
+                onTabChange?.('swipe');
+                onChangeRentalCategory('daily');
+              }}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer ${
+                activeTab === 'swipe' && rentalCategory === 'daily'
+                  ? 'bg-stone-900 text-white shadow-xs'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              Посуточная аренда
+            </button>
 
-              <button
-                type="button"
-                onClick={() => onTabChange('roommates')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'roommates'
-                    ? 'bg-white text-rose-600 shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span>Double Rentch 50/50</span>
-              </button>
+            <button
+              type="button"
+              id="category-tab-double-rentch"
+              onClick={() => {
+                onTabChange?.('roommates');
+                onChangeRentalCategory('double_rentch');
+              }}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'roommates' || rentalCategory === 'double_rentch'
+                  ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-white shadow-xs'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <span>Double Rentch</span>
+              <span className="text-[10px] bg-white/20 px-1 rounded-full">50/50</span>
+            </button>
+          </div>
 
-              <button
-                type="button"
-                onClick={() => onTabChange('map')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'map'
-                    ? 'bg-white text-amber-600 shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                <MapPin className="w-3.5 h-3.5" />
-                <span>Карта</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onTabChange('matches')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'matches'
-                    ? 'bg-white text-rose-600 shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                <Heart className="w-3.5 h-3.5" />
-                <span>Мои Rentch!</span>
-                {matchesCount > 0 && (
-                  <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full">
-                    {matchesCount}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onTabChange('dialogues')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'dialogues'
-                    ? 'bg-white text-rose-600 shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                <span>Диалоги</span>
-                {dialoguesCount > 0 && (
-                  <span className="bg-stone-900 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full">
-                    {dialoguesCount}
-                  </span>
-                )}
-              </button>
-
-              {onOpenFilters && (
-                <button
-                  type="button"
-                  onClick={onOpenFilters}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-stone-600 hover:text-stone-900 transition-all cursor-pointer"
-                >
-                  <SlidersHorizontal className="w-3.5 h-3.5" />
-                  <span>Фильтры</span>
-                </button>
-              )}
-            </nav>
-          )}
-
-          {/* Right action items: PWA Install + CRM + AuthButton */}
+          {/* Right Action Items: PWA + CRM + Auth (City selection removed as requested) */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <PWAInstallButton variant="compact" />
 
@@ -233,6 +163,57 @@ export const TopBar: React.FC<TopBarProps> = ({
               onClick={onOpenAuth}
             />
           </div>
+        </div>
+
+        {/* Mobile Sub-header: Tinder Segmented Tabs Row (Долгосрочная first) */}
+        <div className="flex sm:hidden items-center justify-between bg-stone-100/90 p-1 rounded-full border border-stone-200/80 mt-2 shadow-2xs">
+          <button
+            type="button"
+            id="mobile-category-tab-long-term"
+            onClick={() => {
+              onTabChange?.('swipe');
+              onChangeRentalCategory('long_term');
+            }}
+            className={`flex-1 py-1.5 text-center rounded-full text-[11px] font-black transition-all cursor-pointer truncate ${
+              activeTab === 'swipe' && rentalCategory === 'long_term'
+                ? 'bg-stone-900 text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            Долгосрочная
+          </button>
+
+          <button
+            type="button"
+            id="mobile-category-tab-daily"
+            onClick={() => {
+              onTabChange?.('swipe');
+              onChangeRentalCategory('daily');
+            }}
+            className={`flex-1 py-1.5 text-center rounded-full text-[11px] font-black transition-all cursor-pointer truncate ${
+              activeTab === 'swipe' && rentalCategory === 'daily'
+                ? 'bg-stone-900 text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            Посуточная аренда
+          </button>
+
+          <button
+            type="button"
+            id="mobile-category-tab-double-rentch"
+            onClick={() => {
+              onTabChange?.('roommates');
+              onChangeRentalCategory('double_rentch');
+            }}
+            className={`flex-1 py-1.5 text-center rounded-full text-[11px] font-black transition-all cursor-pointer truncate ${
+              activeTab === 'roommates' || rentalCategory === 'double_rentch'
+                ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            Double Rentch
+          </button>
         </div>
       </div>
     </header>

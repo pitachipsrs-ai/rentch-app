@@ -182,18 +182,22 @@ export const RentchMatchModal: React.FC<RentchMatchModalProps> = ({
           transition={{ type: 'spring', damping: 22, stiffness: 300 }}
           className="relative w-full max-w-md bg-stone-900 text-white rounded-3xl overflow-hidden shadow-2xl border border-rose-500/35 text-center p-5 sm:p-6 my-auto max-h-[94dvh] overflow-y-auto"
         >
-          {/* Close button is ONLY available if user has already provided valid contact details */}
-          {hasSavedValidContacts && !isEditingContacts && (
-            <button
-              id="close-match-btn"
-              type="button"
-              onClick={() => validateAndExecute('continue')}
-              className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
-              title="Закрыть"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
+          {/* Always available close X button */}
+          <button
+            id="close-match-btn"
+            type="button"
+            onClick={() => {
+              try {
+                localStorage.removeItem('rentch_pending_swipe_apt_id');
+              } catch (e) {}
+              onClose();
+            }}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 active:scale-90 text-white flex items-center justify-center transition-all cursor-pointer z-30 shadow-md"
+            title="Закрыть"
+            aria-label="Закрыть"
+          >
+            <X className="w-5 h-5" />
+          </button>
 
           {/* Celebratory badge */}
           <motion.div

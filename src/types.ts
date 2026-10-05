@@ -53,6 +53,47 @@ export type FurnitureStatus = 'full' | 'partial' | 'none';
 
 export type PetPolicy = 'allowed' | 'cats_only' | 'dogs_only' | 'no_pets';
 
+export type RentalCategory = 'daily' | 'long_term' | 'double_rentch';
+export type RentalType = 'long_term' | 'daily';
+
+export interface BookedDateRange {
+  id?: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  guestName?: string;
+  guestPhone?: string;
+}
+
+export type PaymentMethod = 'mir_card' | 'sbp_qr' | 'stripe_card';
+
+export interface DailyBookingRecord {
+  id: string;
+  apartmentId: string;
+  apartmentTitle: string;
+  apartmentDistrict?: string;
+  apartmentAddress: string;
+  apartmentImage?: string;
+  checkInDate: string;
+  checkOutDate: string;
+  nightsCount: number;
+  guestsCount: number;
+  pricePerNight: number;
+  subtotal: number;
+  serviceFeePercent: number; // 15%
+  serviceFeeAmount: number;
+  totalAmount: number;
+  totalAmountRub: number;
+  currency: Currency;
+  paymentMethod: PaymentMethod;
+  paymentStatus: 'paid' | 'pending' | 'failed';
+  paymentId?: string;
+  guestName: string;
+  guestPhone: string;
+  guestTelegram?: string;
+  createdAt: string;
+  accessCode?: string;
+}
+
 export interface Landlord {
   id: string;
   name: string;
@@ -73,6 +114,12 @@ export interface Apartment {
   currency?: Currency;
   priceGel?: number;
   originalPrice?: number;
+  rentalType?: RentalType;
+  pricePerNight?: number;
+  cleaningFee?: number;
+  minNights?: number;
+  maxGuests?: number;
+  bookedRanges?: BookedDateRange[];
   rooms: number;
   bedrooms: number;
   areaSqm: number;
@@ -81,7 +128,7 @@ export interface Apartment {
   furniture: FurnitureStatus;
   petPolicy: PetPolicy;
   minPeriod: LeasePeriod;
-  maxResidents: number;
+  maxResidents?: number;
   images: string[];
   description: string;
   amenities: string[];
@@ -91,6 +138,8 @@ export interface Apartment {
   metro?: string;
   isNew?: boolean;
   sourceUrl?: string;
+  myhomeUrl?: string;
+  originalStatementId?: string;
 }
 
 export interface QuestionnaireAnswers {
@@ -155,6 +204,10 @@ export interface ApartmentChat {
 
 export interface FilterState {
   city?: RentchCity;
+  rentalCategory?: RentalCategory;
+  checkInDate?: string;
+  checkOutDate?: string;
+  guestsCount?: number;
   minPrice: number;
   maxPrice: number;
   furniture: 'any' | FurnitureStatus;

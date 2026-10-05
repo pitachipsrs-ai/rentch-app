@@ -16,10 +16,12 @@ import {
   Plus,
   MapPin,
   Users,
-  LayoutGrid,
   Flame,
   BedDouble,
   Maximize2,
+  Star,
+  Zap,
+  Share2,
 } from 'lucide-react';
 import { 
   Apartment, 
@@ -31,9 +33,12 @@ import {
   NotificationItem,
   CrmLead,
   RentchCity,
-  RoommateOffer
+  RoommateOffer,
+  RentalCategory,
+  DailyBookingRecord
 } from './types';
 import { INITIAL_APARTMENTS } from './data/mockApartments';
+import { SEED_DAILY_APARTMENTS } from './data/seedDailyApartments';
 import { INITIAL_CRM_LEADS } from './data/mockCrmLeads';
 import { filterAndRecommendApartments } from './utils/filterAndRecommend';
 import { CITIES_CONFIG, RENTCH_CITIES } from './utils/districtUtils';
@@ -49,13 +54,14 @@ import { MatchesSection } from './components/MatchesSection';
 import { RoommateFinderSection } from './components/RoommateFinderSection';
 import { DialoguesSection, SUPPORT_CHAT_APARTMENT } from './components/DialoguesSection';
 import { ApartmentDetailsModal } from './components/ApartmentDetailsModal';
+import { DailyBookingModal } from './components/DailyBookingModal';
+import { DailyDateFilterBar } from './components/DailyDateFilterBar';
 import { AdminPanel } from './components/AdminPanel';
 import { RealTimeNotificationToast } from './components/RealTimeNotificationToast';
 import { AuthModal, LandlordAuthData } from './components/AuthModal';
 import { LandlordRegistrationModal } from './components/LandlordRegistrationModal';
 import { PrivacyPolicyModal } from './components/PrivacyPolicyModal';
 import { triggerHaptic, isInsideTelegram, getTelegramUser } from './utils/telegram';
-import { QuickFilterBar } from './components/QuickFilterBar';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { SplashScreen } from './components/SplashScreen';
 import { getMyHomeOriginalUrl } from './utils/myhomeParser';
@@ -87,6 +93,7 @@ const FAKE_MOCK_IDS = new Set([
 
 const isFakeApartment = (a: any): boolean => {
   if (!a || typeof a !== 'object') return true;
+  if (a.rentalType === 'daily') return false;
   if (!a.id || FAKE_MOCK_IDS.has(a.id)) return true;
   if (Array.isArray(a.images) && a.images.some((img: string) => typeof img === 'string' && img.includes('unsplash.com'))) {
     return true;
@@ -109,7 +116,17 @@ const isFakeApartment = (a: any): boolean => {
   return false;
 };
 
-const CATALOG_VERSION = 'v11_clean_user_profile';
+const mergeWithDailySeed = (base: Apartment[]): Apartment[] => {
+  const result = [...base];
+  for (const daily of SEED_DAILY_APARTMENTS) {
+    if (!result.some((a) => a.id === daily.id)) {
+      result.push(daily);
+    }
+  }
+  return result;
+};
+
+const CATALOG_VERSION = 'v12_tinder_daily_catalog';
 
 const FAKE_CACHED_NAMES = new Set([
   'Иван Смирнов',
@@ -137,7 +154,7 @@ export default function App() {
       if (storedVer !== CATALOG_VERSION) {
         localStorage.removeItem('rentch_apartments');
         localStorage.setItem('rentch_catalog_ver', CATALOG_VERSION);
-        return [];
+        return mergeWithDailySeed([]);
       }
 
       const saved = localStorage.getItem('rentch_apartments');
@@ -145,13 +162,13 @@ export default function App() {
         const parsed: Apartment[] = JSON.parse(saved);
         if (Array.isArray(parsed)) {
           const clean = parsed.filter((a) => !isFakeApartment(a));
-          return clean;
+          return mergeWithDailySeed(clean);
         }
       }
     } catch (e) {
       console.error(e);
     }
-    return INITIAL_APARTMENTS.filter((a) => !isFakeApartment(a));
+    return mergeWithDailySeed(INITIAL_APARTMENTS.filter((a) => !isFakeApartment(a)));
   });
 
   // Fetch real apartments from server on startup and sync on focus / background
@@ -170,9 +187,10 @@ export default function App() {
       .then((serverApts: Apartment[]) => {
         if (Array.isArray(serverApts)) {
           const cleanServerApts = serverApts.filter((a) => !isFakeApartment(a));
-          setApartments(cleanServerApts);
+          const withDaily = mergeWithDailySeed(cleanServerApts);
+          setApartments(withDaily);
           try {
-            localStorage.setItem('rentch_apartments', JSON.stringify(cleanServerApts));
+            localStorage.setItem('rentch_apartments', JSON.stringify(withDaily));
           } catch (storageErr) {
             console.warn('LocalStorage quota reached (server DB is primary truth):', storageErr);
           }
@@ -269,7 +287,27 @@ export default function App() {
       return false;
     }
   });
-  const [webCatalogMode, setWebCatalogMode] = useState<'swipe' | 'grid'>('swipe');
+  const [rentalCategory, setRentalCategory] = useState<RentalCategory>(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const catParam = urlParams.get('category');
+      if (catParam === 'daily' || catParam === 'long_term' || catParam === 'double_rentch') {
+        return catParam as RentalCategory;
+      }
+      const saved = localStorage.getItem('rentch_rental_category');
+      if (saved === 'daily' || saved === 'long_term' || saved === 'double_rentch') {
+        return saved as RentalCategory;
+      }
+    } catch {}
+    return 'long_term';
+  });
+  const [dailyBookingModalApartment, setDailyBookingModalApartment] = useState<Apartment | null>(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('rentch_rental_category', rentalCategory);
+    } catch {}
+  }, [rentalCategory]);
 
   const handleDeleteUserData = async () => {
     try {
@@ -719,6 +757,7 @@ export default function App() {
     } catch (e) {}
     return {
       city: initialCity,
+      rentalCategory,
       minPrice: 200,
       maxPrice: 2000,
       furniture: 'any',
@@ -727,6 +766,13 @@ export default function App() {
       petFriendlyOnly: false,
     };
   });
+
+  useEffect(() => {
+    setFilters((prev) => ({
+      ...prev,
+      rentalCategory,
+    }));
+  }, [rentalCategory]);
 
   const activeCity: RentchCity = filters.city || 'tbilisi';
   const activeCityInfo = CITIES_CONFIG[activeCity];
@@ -1006,8 +1052,95 @@ export default function App() {
   }, [apartments, matchModalApartment, userProfile.name, userProfile.phone, userProfile.telegramUsername, recordRightSwipeLeadInCrm]);
 
   // Swiping actions (limited to MAX_DAILY_RIGHT_SWIPES = 5 right swipes per day)
+  const handleBookingSuccess = (booking: DailyBookingRecord) => {
+    // 1. Update apartment's bookedRanges locally
+    setApartments((prev) =>
+      prev.map((apt) => {
+        if (apt.id === booking.apartmentId) {
+          const existing = apt.bookedRanges || [];
+          return {
+            ...apt,
+            bookedRanges: [
+              ...existing,
+              {
+                id: booking.id,
+                startDate: booking.checkInDate,
+                endDate: booking.checkOutDate,
+                guestName: booking.guestName,
+                guestPhone: booking.guestPhone,
+              },
+            ],
+          };
+        }
+        return apt;
+      })
+    );
+
+    // 2. Add lead into CRM with stage 'paid'
+    const newPaidLead: CrmLead = {
+      id: `crm-booking-${booking.id}`,
+      clientName: booking.guestName,
+      clientPhone: booking.guestPhone,
+      clientTelegram: booking.guestTelegram,
+      stage: 'paid',
+      apartmentId: booking.apartmentId,
+      apartmentTitle: booking.apartmentTitle,
+      apartmentDistrict: booking.apartmentDistrict,
+      apartmentAddress: booking.apartmentAddress,
+      apartmentImage: booking.apartmentImage,
+      apartmentPriceUsd: booking.totalAmount,
+      paidAmountUsd: booking.totalAmount,
+      registeredAt: 'Только что',
+      notes: `ПОСУТОЧНАЯ АРЕНДА (ОПЛАЧЕНО 100%): Бронь #${booking.id} (${booking.checkInDate} — ${booking.checkOutDate}, ${booking.nightsCount} ноч.). Оплачено ${booking.totalAmountRub} ₽ ($${booking.totalAmount}). Комиссия сервиса 15%: $${booking.serviceFeeAmount}. Метод: ${booking.paymentMethod}. Код доступа: ${booking.accessCode}`,
+      messages: [
+        {
+          id: `msg-paid-${Date.now()}`,
+          sender: 'bot',
+          text: `✅ Бронь #${booking.id} оплачена! Заезд: ${booking.checkInDate}, выезд: ${booking.checkOutDate}. Код от сейфа с ключами: ${booking.accessCode}`,
+          timestamp: 'только что',
+        },
+      ],
+    };
+
+    setCrmLeads((prev) => {
+      const next = [newPaidLead, ...prev];
+      syncLeadsToServer(next, { isAdminUpdate: false });
+      return next;
+    });
+
+    // 3. Mark in likedIds
+    setLikedIds((prev) => (prev.includes(booking.apartmentId) ? prev : [...prev, booking.apartmentId]));
+
+    // 4. Server API call
+    fetch('/api/bookings/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ booking }),
+    }).catch(() => {});
+
+    // 5. In-app notification toast
+    const notif: NotificationItem = {
+      id: 'notif-booking-' + Date.now(),
+      type: 'match',
+      title: 'Бронирование оплачено!',
+      message: `Вы успешно забронировали «${booking.apartmentTitle}» (${booking.checkInDate} — ${booking.checkOutDate}). Код: ${booking.accessCode}`,
+      timestamp: 'только что',
+      apartmentId: booking.apartmentId,
+      read: false,
+    };
+    setNotifications((prev) => [notif, ...prev]);
+    setActiveToast(notif);
+  };
+
   const handleSwipeRight = (apartment: Apartment) => {
     if (!apartment) return;
+
+    // For daily rental apartments, right swipe opens the instant daily booking modal
+    if (apartment.rentalType === 'daily') {
+      triggerHaptic('success');
+      setDailyBookingModalApartment(apartment);
+      return;
+    }
 
     if (!dailyRightSwipes.includes(apartment.id) && dailyRightSwipes.length >= MAX_DAILY_RIGHT_SWIPES) {
       triggerHaptic('warning');
@@ -1658,9 +1791,17 @@ export default function App() {
   };
 
   // Questionnaire completion & CRM sync (Column "Зарегистрировались в сервисе")
-  const handleQuestionnaireComplete = (profile: UserProfile, answers: QuestionnaireAnswers) => {
+  const handleQuestionnaireComplete = (
+    profile: UserProfile, 
+    answers: QuestionnaireAnswers,
+    chosenCity?: RentchCity
+  ) => {
     setUserProfile(profile);
     setIsQuestionnaireOpen(false);
+
+    if (chosenCity) {
+      handleSelectCity(chosenCity, false);
+    }
 
     // If pending viewing, complete it directly (which creates/updates the viewing_scheduled lead)
     if (pendingApartmentForViewing) {
@@ -1950,15 +2091,19 @@ export default function App() {
           setIsSplashOpen(false);
           setActiveTab('admin');
         }}
-        activeCity={activeCity}
-        onChangeCity={(city) => handleSelectCity(city, false)}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        matchesCount={matchedApartments.length}
-        dialoguesCount={dialoguesCount}
         onOpenFilters={() => setIsFilterDrawerOpen(true)}
-        webCatalogMode={webCatalogMode}
-        onChangeWebCatalogMode={setWebCatalogMode}
+        hasActiveFilters={hasActiveFilters}
+        rentalCategory={rentalCategory}
+        onChangeRentalCategory={(cat) => {
+          setRentalCategory(cat);
+          if (cat === 'double_rentch') {
+            setActiveTab('roommates');
+          } else {
+            setActiveTab('swipe');
+          }
+        }}
       />
 
       {/* Main View Container */}
@@ -1980,221 +2125,55 @@ export default function App() {
           }}
         />
 
-        {/* 1. Tinder Swipe View + Full Web Catalog Grid Mode */}
+        {/* 1. Tinder Swipe View */}
         {activeTab === 'swipe' && (
-          <div
-            className={`flex-1 flex flex-col items-center justify-start min-w-0 mx-auto w-full pb-24 ${
-              webCatalogMode === 'grid' ? 'max-w-6xl' : 'max-w-md justify-center'
-            }`}
-          >
-            {/* Mode Switcher: Свайпы карточек vs Каталог плиткой (Web) */}
-            <div className="w-full mb-2.5 px-0.5 flex items-center justify-between gap-2">
-              <div className="inline-flex items-center bg-white p-1 rounded-2xl border border-stone-200/90 shadow-2xs">
-                <button
-                  type="button"
-                  id="mode-switch-swipe-btn"
-                  onClick={() => setWebCatalogMode('swipe')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    webCatalogMode === 'swipe'
-                      ? 'bg-stone-900 text-white shadow-2xs'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  <Flame className="w-3.5 h-3.5 text-rose-500" />
-                  <span>Свайпы</span>
-                </button>
-                <button
-                  type="button"
-                  id="mode-switch-grid-btn"
-                  onClick={() => setWebCatalogMode('grid')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    webCatalogMode === 'grid'
-                      ? 'bg-stone-900 text-white shadow-2xs'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  <LayoutGrid className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Каталог плиткой ({filteredApartments.length})</span>
-                </button>
-              </div>
+          <div className="flex-1 flex flex-col items-center justify-start min-w-0 mx-auto w-full pb-24 max-w-md justify-center">
+            {/* Daily Date Filter Bar (when in "Посуточная аренда" mode) */}
+            {rentalCategory === 'daily' && (
+              <DailyDateFilterBar
+                checkInDate={filters.checkInDate}
+                checkOutDate={filters.checkOutDate}
+                guestsCount={filters.guestsCount}
+                availableCount={remainingCards.length}
+                onUpdateDates={(d) => {
+                  setFilters((prev) => ({
+                    ...prev,
+                    checkInDate: d.checkIn,
+                    checkOutDate: d.checkOut,
+                    guestsCount: d.guests,
+                  }));
+                }}
+              />
+            )}
 
-              <button
-                type="button"
-                onClick={() => setActiveTab('roommates')}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-stone-900 hover:bg-black text-white text-xs font-bold shadow-2xs transition cursor-pointer shrink-0"
-              >
-                <Users className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Double Rentch 50/50</span>
-              </button>
+            {/* Daily Right Swipe Limit Indicator */}
+            <div className="w-full flex items-center justify-between px-3 py-1.5 rounded-2xl bg-white border border-stone-200/80 shadow-2xs text-xs mb-2.5">
+              <div className="flex items-center gap-1.5 text-stone-600 font-semibold">
+                <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+                <span>Свайпов вправо сегодня:</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`font-black px-2 py-0.5 rounded-lg text-[11px] ${
+                    dailyRightSwipes.length >= MAX_DAILY_RIGHT_SWIPES
+                      ? 'bg-rose-100 text-rose-700'
+                      : 'bg-emerald-50 text-emerald-700'
+                  }`}
+                >
+                  {dailyRightSwipes.length} / {MAX_DAILY_RIGHT_SWIPES}
+                </span>
+              </div>
             </div>
 
-            {webCatalogMode === 'grid' ? (
-              <div className="w-full space-y-4">
-                <div className="max-w-xl">
-                  <QuickFilterBar
-                    filters={filters}
-                    onUpdateFilters={setFilters}
-                    onOpenFilterDrawer={() => setIsFilterDrawerOpen(true)}
-                    matchingCount={filteredApartments.length}
-                  />
-                </div>
-
-                {filteredApartments.length === 0 ? (
-                  <div className="w-full rounded-3xl border-2 border-dashed border-stone-200 bg-white p-10 text-center space-y-3">
-                    <h3 className="text-lg font-bold text-stone-900">
-                      Нет подходящих квартир по текущему фильтру
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFilters({
-                          city: activeCity,
-                          minPrice: 200,
-                          maxPrice: 2000,
-                          furniture: 'any',
-                          district: 'all',
-                          period: 'any',
-                          petFriendlyOnly: false,
-                        })
-                      }
-                      className="px-5 py-2.5 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold cursor-pointer"
-                    >
-                      Сбросить фильтры
-                    </button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredApartments.map((apt) => {
-                      const isLiked = likedIds.includes(apt.id);
-                      const priceSymbol =
-                        apt.currency === 'EUR' || apt.city === 'belgrade' ? '€' : '$';
-                      const halfPrice = Math.round(apt.priceUsd / 2);
-                      return (
-                        <div
-                          key={apt.id}
-                          className="bg-white rounded-3xl border border-stone-200/90 shadow-xs hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group"
-                        >
-                          <div>
-                            <div
-                              onClick={() => {
-                                trackAnalyticsEvent('apartment_view', {
-                                  apartmentId: apt.id,
-                                  apartmentTitle: apt.title,
-                                });
-                                setDetailsModalApartment(apt);
-                              }}
-                              className="relative h-56 w-full bg-stone-900 overflow-hidden cursor-pointer"
-                            >
-                              <img
-                                src={apt.images[0]}
-                                alt={apt.title}
-                                referrerPolicy="no-referrer"
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
-                              <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                                <span className="px-2.5 py-1 rounded-xl bg-stone-950/80 backdrop-blur-xs text-white font-black text-xs border border-white/15">
-                                  {priceSymbol}
-                                  {apt.priceUsd}/мес
-                                </span>
-                                <span className="px-2 py-1 rounded-xl bg-emerald-500/90 text-stone-950 font-black text-[10px]">
-                                  50/50: {priceSymbol}
-                                  {halfPrice}
-                                </span>
-                              </div>
-                              {isLiked && (
-                                <span className="absolute top-3 right-3 px-2.5 py-1 rounded-xl bg-rose-500 text-white font-black text-[10px]">
-                                  В моих Rentch! ❤️
-                                </span>
-                              )}
-                              <div className="absolute bottom-3 inset-x-3 text-left text-white">
-                                <div className="text-[11px] text-amber-300 font-semibold flex items-center gap-1 truncate">
-                                  <MapPin className="w-3 h-3 shrink-0" />
-                                  <span className="truncate">{apt.district}</span>
-                                </div>
-                                <h4 className="font-bold text-sm truncate mt-0.5">{apt.title}</h4>
-                              </div>
-                            </div>
-
-                            <div className="p-3.5 space-y-2">
-                              <div className="flex items-center justify-between text-xs text-stone-600">
-                                <span className="inline-flex items-center gap-1 font-semibold">
-                                  <BedDouble className="w-3.5 h-3.5 text-rose-500" />
-                                  {apt.rooms} комн. ({apt.bedrooms} спальни)
-                                </span>
-                                <span className="inline-flex items-center gap-1 font-semibold">
-                                  <Maximize2 className="w-3.5 h-3.5 text-amber-500" />
-                                  {apt.areaSqm} м² · {apt.floor}/{apt.totalFloors} эт.
-                                </span>
-                              </div>
-                              <p className="text-xs text-stone-500 truncate">{apt.address}</p>
-                            </div>
-                          </div>
-
-                          <div className="px-3.5 pb-3.5 pt-1 grid grid-cols-2 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleSwipeRight(apt)}
-                              className="py-2.5 px-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition"
-                            >
-                              <Heart className="w-3.5 h-3.5 fill-white" />
-                              <span>{isLiked ? 'Открыть Rentch!' : 'Rentch! (Заявка)'}</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenRoommateFinder(apt)}
-                              className="py-2.5 px-3 rounded-2xl bg-stone-900 hover:bg-black text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition"
-                            >
-                              <Users className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Сосед 50/50</span>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            ) : (
-            <>
             {/* Swipe Deck Container */}
             <div 
               id="swipe-deck-container"
               className="relative w-full max-w-full min-w-0 flex flex-col items-center"
             >
-              {/* Quick Filter Buttons inside swipe-deck-container */}
-              <div className="w-full mb-2.5 px-0.5 space-y-2">
-                <QuickFilterBar
-                  filters={filters}
-                  onUpdateFilters={setFilters}
-                  onOpenFilterDrawer={() => setIsFilterDrawerOpen(true)}
-                  matchingCount={filteredApartments.length}
-                />
-
-                {/* Daily Right Swipe Limit Indicator */}
-                <div className="flex items-center justify-between px-3 py-1.5 rounded-2xl bg-white border border-stone-200/80 shadow-2xs text-xs">
-                  <div className="flex items-center gap-1.5 text-stone-600 font-semibold">
-                    <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
-                    <span>Свайпов вправо сегодня:</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={`font-black px-2 py-0.5 rounded-lg text-[11px] ${
-                        dailyRightSwipes.length >= MAX_DAILY_RIGHT_SWIPES
-                          ? 'bg-rose-100 text-rose-700'
-                          : 'bg-emerald-50 text-emerald-700'
-                      }`}
-                    >
-                      {dailyRightSwipes.length} / {MAX_DAILY_RIGHT_SWIPES} квартир
-                    </span>
-                  </div>
-                </div>
-              </div>
-
               {/* Cards Stage Container */}
               <div 
                 id="swipe-deck-stage"
-                className="relative w-full h-[560px] sm:h-[600px]"
+                className="relative w-full h-[580px] sm:h-[620px]"
               >
               {remainingCards.length > 0 ? (
                 <>
@@ -2234,7 +2213,7 @@ export default function App() {
                 /* Empty deck state */
                 <div 
                   id="empty-deck-card"
-                  className="w-full h-full rounded-3xl border-2 border-dashed border-stone-200 bg-white p-8 flex flex-col items-center justify-center text-center shadow-sm"
+                  className="w-full h-full rounded-[32px] border-2 border-dashed border-stone-200 bg-white p-8 flex flex-col items-center justify-center text-center shadow-sm"
                 >
                   {apartments.length === 0 ? (
                     <>
@@ -2264,21 +2243,30 @@ export default function App() {
                         <SlidersHorizontal className="w-8 h-8" />
                       </div>
                       <h3 className="text-xl font-bold text-stone-900">
-                        {activeCityInfo.flag} Раздел «{activeCityInfo.nameRu}»
+                        {activeCityInfo.flag} {rentalCategory === 'daily' ? 'Посуточная аренда' : 'Долгосрочная аренда'} ({activeCityInfo.nameRu})
                       </h3>
                       <p className="text-xs sm:text-sm text-stone-500 mt-2 max-w-xs leading-relaxed">
-                        В разделе <strong className="text-stone-800 font-bold">{activeCityInfo.nameRu}</strong> пока нет подходящих под фильтр объектов. Вы можете сбросить фильтры или выбрать другой город:
+                        {rentalCategory === 'daily' && filters.checkInDate
+                          ? 'На выбранные вами даты нет свободных объектов. Попробуйте изменить даты или сбросить фильтры.'
+                          : `В разделе «${activeCityInfo.nameRu}» пока нет подходящих под текущий фильтр объектов.`}
                       </p>
 
                       <div className="flex flex-col gap-2.5 mt-4 w-full max-w-xs">
-                        <button
-                          type="button"
-                          onClick={() => setIsSplashOpen(true)}
-                          className="w-full bg-stone-900 hover:bg-black text-white font-bold py-3 px-5 rounded-2xl text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                          <MapPin className="w-4 h-4 text-rose-400" />
-                          <span>Выбрать другой город</span>
-                        </button>
+                        {rentalCategory === 'daily' && filters.checkInDate && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                checkInDate: undefined,
+                                checkOutDate: undefined,
+                              }))
+                            }
+                            className="w-full bg-stone-900 hover:bg-black text-white font-bold py-3 px-5 rounded-2xl text-xs shadow-md transition cursor-pointer"
+                          >
+                            Сбросить даты и показать все
+                          </button>
+                        )}
 
                         <button
                           type="button"
@@ -2286,6 +2274,7 @@ export default function App() {
                           onClick={() => {
                             setFilters({
                               city: activeCity,
+                              rentalCategory,
                               minPrice: 200,
                               maxPrice: 2000,
                               furniture: 'any',
@@ -2308,15 +2297,6 @@ export default function App() {
                         >
                           <SlidersHorizontal className="w-4 h-4" />
                           <span>Настроить фильтры</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('map')}
-                          className="w-full text-stone-500 hover:text-stone-800 text-xs font-semibold py-1.5 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <MapPin className="w-3.5 h-3.5" />
-                          <span>Смотреть все {apartments.length} объектов на карте</span>
                         </button>
                       </div>
                     </>
@@ -2352,16 +2332,6 @@ export default function App() {
                             <span>Открыть мои Rentch! ({likedIds.length})</span>
                           </button>
                         )}
-
-                        <button
-                          type="button"
-                          id="open-filters-empty-btn"
-                          onClick={() => setIsFilterDrawerOpen(true)}
-                          className="w-full bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold py-2.5 px-5 rounded-2xl text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                          <SlidersHorizontal className="w-4 h-4" />
-                          <span>Изменить фильтры поиска</span>
-                        </button>
                       </div>
                     </>
                   )}
@@ -2370,59 +2340,84 @@ export default function App() {
               </div>
             </div>
 
-            {/* Bottom Swipe Controller Buttons */}
+            {/* Bottom 5 Tinder Action Controller Buttons (Exactly matching Tinder layout) */}
             {currentCard && (
               <div 
-                id="swipe-controls-bar"
-                className="flex items-center justify-center gap-4 mt-5 select-none"
+                id="tinder-action-buttons-bar"
+                className="flex items-center justify-center gap-3 sm:gap-4 mt-4 sm:mt-5 select-none"
               >
-                {/* 1. Undo */}
+                {/* 1. Undo / Rewind (Amber / Orange) */}
                 <button
                   type="button"
                   id="ctrl-undo-btn"
                   onClick={handleUndoSwipe}
                   disabled={swipeHistory.length === 0}
-                  className="w-12 h-12 rounded-2xl bg-white border border-stone-200 hover:border-amber-400 hover:text-amber-500 text-stone-400 disabled:opacity-40 disabled:hover:border-stone-200 disabled:hover:text-stone-400 shadow-sm flex items-center justify-center transition-all cursor-pointer"
+                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white border border-amber-300 hover:bg-amber-50 text-amber-500 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-stone-200 disabled:text-stone-300 shadow-md flex items-center justify-center transition-all cursor-pointer active:scale-90"
                   title="Отменить последний свайп"
                 >
-                  <RotateCcw className="w-5 h-5" />
+                  <RotateCcw className="w-5 h-5 stroke-[2.5]" />
                 </button>
 
-                {/* 2. Dislike (Swipe Left) */}
+                {/* 2. Dislike (Red / Coral) */}
                 <button
                   type="button"
                   id="ctrl-dislike-btn"
                   onClick={() => handleSwipeLeft(currentCard)}
-                  className="w-16 h-16 rounded-3xl bg-white border border-rose-200 hover:bg-rose-50 text-rose-500 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 flex items-center justify-center transition-all cursor-pointer"
-                  title="Пропустить квартиру (Свайп влево)"
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white border border-rose-300 hover:bg-rose-50 text-rose-500 shadow-lg hover:shadow-xl hover:scale-105 active:scale-90 flex items-center justify-center transition-all cursor-pointer"
+                  title="Пропустить (Свайп влево)"
                 >
-                  <X className="w-8 h-8 stroke-[2.5]" />
+                  <X className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2.5]" />
                 </button>
 
-                {/* 3. Info / Details */}
+                {/* 3. Superlike (Sky / Blue Star) */}
                 <button
                   type="button"
-                  id="ctrl-info-btn"
-                  onClick={() => setDetailsModalApartment(currentCard)}
-                  className="w-12 h-12 rounded-2xl bg-white border border-stone-200 hover:border-sky-400 hover:text-sky-500 text-stone-500 shadow-sm flex items-center justify-center transition-all cursor-pointer"
-                  title="Подробная информация о квартире"
+                  id="ctrl-superlike-btn"
+                  onClick={() => {
+                    triggerHaptic('heavy');
+                    handleSwipeRight(currentCard);
+                  }}
+                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white border border-sky-300 hover:bg-sky-50 text-sky-500 shadow-md hover:scale-105 active:scale-90 flex items-center justify-center transition-all cursor-pointer"
+                  title="Суперлайк!"
                 >
-                  <Info className="w-5 h-5" />
+                  <Star className="w-5 h-5 stroke-[2.5] fill-sky-400/20" />
                 </button>
 
-                {/* 4. Like / Rentch Match (Swipe Right) */}
+                {/* 4. Like / Rentch! / Book (Emerald / Rose Gradient Heart) */}
                 <button
                   type="button"
                   id="ctrl-like-btn"
                   onClick={() => handleSwipeRight(currentCard)}
-                  className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-rose-500 via-pink-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white shadow-lg shadow-rose-500/25 hover:shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center transition-all cursor-pointer"
-                  title="Нравится! Rentch! (Свайп вправо)"
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-rose-500 via-pink-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white shadow-xl shadow-rose-500/25 hover:shadow-2xl hover:scale-105 active:scale-90 flex items-center justify-center transition-all cursor-pointer"
+                  title={currentCard.rentalType === 'daily' ? 'Забронировать посуточно' : 'Rentch! Нравится'}
                 >
-                  <Heart className="w-8 h-8 fill-white" />
+                  <Heart className="w-7 h-7 sm:w-8 sm:h-8 fill-white" />
+                </button>
+
+                {/* 5. Fast Action / Share (Purple Zap) */}
+                <button
+                  type="button"
+                  id="ctrl-share-btn"
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    const shareUrl = `${window.location.origin}${window.location.pathname}?apartment=${encodeURIComponent(currentCard.id)}`;
+                    navigator.clipboard?.writeText(shareUrl);
+                    const notif: NotificationItem = {
+                      id: 'notif-copied-' + Date.now(),
+                      title: 'Ссылка скопирована!',
+                      message: `Ссылка на «${currentCard.title}» скопирована в буфер обмена.`,
+                      timestamp: 'только что',
+                      read: false,
+                      type: 'system',
+                    };
+                    setActiveToast(notif);
+                  }}
+                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white border border-purple-300 hover:bg-purple-50 text-purple-600 shadow-md hover:scale-105 active:scale-90 flex items-center justify-center transition-all cursor-pointer"
+                  title="Быстро поделиться объектом"
+                >
+                  <Zap className="w-5 h-5 stroke-[2.5] fill-purple-400/20" />
                 </button>
               </div>
-            )}
-            </>
             )}
           </div>
         )}
@@ -2599,6 +2594,7 @@ export default function App() {
         pendingApartmentTitle={pendingApartmentForViewing?.title}
         initialAnswers={userProfile.questionnaire}
         userProfile={userProfile}
+        activeCity={activeCity}
       />
 
       {/* Modal 4: Filters Drawer */}
@@ -2628,10 +2624,27 @@ export default function App() {
         onClose={() => setDetailsModalApartment(null)}
         onLike={(apt) => handleSwipeRight(apt)}
         onDislike={(apt) => handleSwipeLeft(apt)}
+        onBookDaily={(apt) => setDailyBookingModalApartment(apt)}
         isLiked={detailsModalApartment ? likedIds.includes(detailsModalApartment.id) : false}
         isAdmin={isAdminLoggedIn}
         onDelete={handleDeleteApartment}
       />
+
+      {/* Modal 5B: Daily Rental Booking & Payment (Stripe + Russian Cards + 15% fee) */}
+      {dailyBookingModalApartment && (
+        <DailyBookingModal
+          apartment={dailyBookingModalApartment}
+          isOpen={!!dailyBookingModalApartment}
+          onClose={() => setDailyBookingModalApartment(null)}
+          userProfile={userProfile}
+          initialCheckIn={filters.checkInDate}
+          initialCheckOut={filters.checkOutDate}
+          initialGuests={filters.guestsCount || 1}
+          onBookingSuccess={(booking) => {
+            handleBookingSuccess(booking);
+          }}
+        />
+      )}
 
       {/* Modal 6: Authentication & Role Switcher */}
       <AuthModal

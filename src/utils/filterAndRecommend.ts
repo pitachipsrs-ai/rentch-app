@@ -22,25 +22,75 @@ export function isCenterDistrict(district: string): boolean {
   return CENTRAL_TBILISI_DISTRICTS.includes(district);
 }
 
+export function isDateRangeOverlapping(
+  startA: string,
+  endA: string,
+  startB: string,
+  endB: string
+): boolean {
+  return startA < endB && endA > startB;
+}
+
 export function filterAndRecommendApartments(
   apartments: Apartment[],
   filters: FilterState,
   questionnaire?: QuestionnaireAnswers
 ): Apartment[] {
   const activeCity = filters.city || 'tbilisi';
+  const category = filters.rentalCategory || 'long_term';
 
   return apartments
     // Step 1: Hard filters
     .filter((apt) => {
+      // 0. Rental Category filter: Daily vs Long-term vs Double Rentch
+      if (category === 'daily') {
+        if (apt.rentalType !== 'daily') {
+          return false;
+        }
+
+        // Daily availability check based on selected dates
+        if (filters.checkInDate && filters.checkOutDate) {
+          const inDate = filters.checkInDate;
+          const outDate = filters.checkOutDate;
+          if (Array.isArray(apt.bookedRanges) && apt.bookedRanges.length > 0) {
+            const hasConflict = apt.bookedRanges.some((range) =>
+              isDateRangeOverlapping(inDate, outDate, range.startDate, range.endDate)
+            );
+            if (hasConflict) {
+              return false; // Occupied on selected dates!
+            }
+          }
+        }
+
+        // Daily guests count filter
+        if (filters.guestsCount && apt.maxGuests && apt.maxGuests < filters.guestsCount) {
+          return false;
+        }
+      } else if (category === 'long_term') {
+        if (apt.rentalType === 'daily') {
+          return false;
+        }
+      } else if (category === 'double_rentch') {
+        if (apt.rentalType === 'daily') {
+          return false;
+        }
+      }
+
       // City section filter (Tbilisi / Yerevan / Belgrade)
       const aptCity = getApartmentCity(apt);
       if (aptCity !== activeCity) {
         return false;
       }
 
-      // Budget filter
-      if (apt.priceUsd < filters.minPrice || apt.priceUsd > filters.maxPrice) {
-        return false;
+      // Budget filter (skip or adapt for daily if daily mode)
+      if (category !== 'daily') {
+        if (apt.priceUsd < filters.minPrice || apt.priceUsd > filters.maxPrice) {
+          return false;
+        }
+      } else {
+        // Daily price per night filter if active
+        const pricePerNight = apt.pricePerNight || Math.round(apt.priceUsd / 30);
+        if (pricePerNight < 10) return false;
       }
 
       // Furniture filter

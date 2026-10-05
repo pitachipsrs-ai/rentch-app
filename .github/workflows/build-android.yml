@@ -36,14 +36,20 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Build Android App Bundle (Release AAB)
+      - name: Build Android App Bundle (Release AAB) and APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease --stacktrace
+          ./gradlew bundleRelease assembleRelease --stacktrace
 
-      - name: Upload AAB Artifact
+      - name: Upload AAB Artifact for Google Play
         uses: actions/upload-artifact@v4
         with:
           name: rentch-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
+
+      - name: Upload APK Artifact for Direct Install
+        uses: actions/upload-artifact@v4
+        with:
+          name: rentch-release-apk
+          path: android/app/build/outputs/apk/release/*.apk

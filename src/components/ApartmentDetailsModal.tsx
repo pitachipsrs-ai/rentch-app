@@ -34,6 +34,7 @@ interface ApartmentDetailsModalProps {
   onClose: () => void;
   onLike: (apartment: Apartment) => void;
   onDislike: (apartment: Apartment) => void;
+  onBookDaily?: (apartment: Apartment) => void;
   isLiked?: boolean;
   isAdmin?: boolean;
   onDelete?: (id: string) => void;
@@ -45,6 +46,7 @@ export const ApartmentDetailsModal: React.FC<ApartmentDetailsModalProps> = ({
   onClose,
   onLike,
   onDislike,
+  onBookDaily,
   isLiked,
   isAdmin,
 }) => {
@@ -217,19 +219,26 @@ export const ApartmentDetailsModal: React.FC<ApartmentDetailsModalProps> = ({
                 </span>
                 <div className="text-right">
                   <span className="text-2xl font-extrabold text-stone-900">
-                    {apartment.currency === 'EUR' || apartment.city === 'belgrade'
+                    {apartment.rentalType === 'daily'
+                      ? `$${apartment.pricePerNight || 45}`
+                      : apartment.currency === 'EUR' || apartment.city === 'belgrade'
                       ? `€${apartment.originalPrice || apartment.priceUsd}`
                       : apartment.currency === 'GEL'
                       ? `${gelPrice} ₾`
                       : `$${apartment.priceUsd}`}
                   </span>
                   <span className="text-xs text-stone-500 ml-1">
-                    {apartment.currency === 'EUR' || apartment.city === 'belgrade'
+                    {apartment.rentalType === 'daily'
+                      ? `/ сут`
+                      : apartment.currency === 'EUR' || apartment.city === 'belgrade'
                       ? `/ мес`
                       : apartment.currency === 'GEL'
                       ? `/ мес (~$${apartment.priceUsd})`
                       : `/ мес (~${gelPrice} ₾)`}
                   </span>
+                  {apartment.rentalType === 'daily' && (
+                    <div className="text-[10px] text-emerald-600 font-bold">Сбор 15% включен в расчет</div>
+                  )}
                 </div>
               </div>
 
@@ -422,24 +431,39 @@ export const ApartmentDetailsModal: React.FC<ApartmentDetailsModalProps> = ({
                 onDislike(apartment);
                 onClose();
               }}
-              className="flex-1 py-3 px-4 rounded-2xl border border-stone-200 hover:border-stone-300 bg-white text-stone-700 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="py-3 px-4 rounded-2xl border border-stone-200 hover:border-stone-300 bg-white text-stone-700 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <XCircle className="w-4 h-4 text-stone-400" />
               <span>Пропустить</span>
             </button>
 
-            <button
-              type="button"
-              id="details-like-btn"
-              onClick={() => {
-                onLike(apartment);
-                onClose();
-              }}
-              className="flex-1 py-3 px-5 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Heart className="w-4 h-4 fill-white" />
-              <span>{isLiked ? 'Открыть диалог Rentch' : 'Rentch! Нравится'}</span>
-            </button>
+            {apartment.rentalType === 'daily' ? (
+              <button
+                type="button"
+                id="details-book-daily-btn"
+                onClick={() => {
+                  onBookDaily?.(apartment);
+                  onClose();
+                }}
+                className="flex-1 py-3 px-5 rounded-2xl bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white text-xs sm:text-sm font-extrabold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Забронировать посуточно (${apartment.pricePerNight || 45}/сут)</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                id="details-like-btn"
+                onClick={() => {
+                  onLike(apartment);
+                  onClose();
+                }}
+                className="flex-1 py-3 px-5 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Heart className="w-4 h-4 fill-white" />
+                <span>{isLiked ? 'Открыть диалог Rentch' : 'Rentch! Нравится'}</span>
+              </button>
+            )}
           </div>
         </motion.div>
       </div>
